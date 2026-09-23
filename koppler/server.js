@@ -54,6 +54,19 @@ const BIND = process.env.KOPPLER_BIND || '127.0.0.1';
 // der Kopfzeile X-Chats-Gesamt, damit sich das nachsehen laesst.
 const CHAT_GRENZE = Number(process.env.KOPPLER_CHAT_GRENZE || 300);
 
+// --- Benachrichtigungen (optional) -----------------------------------------
+// Bei einer eingehenden Nachricht ein POST an BENACHRICHTIGUNG_URL. Das Format
+// ist ntfy-kompatibel (Text im Koerper, Titel im Header), taugt aber fuer
+// jeden Dienst, der ein schlichtes POST annimmt. Leer = aus.
+//
+// Sparsam per Vorgabe: es geht nur "Neue Nachricht von X" hinaus, KEIN Inhalt,
+// und Gruppen sind aus. Wer den Inhalt in der Benachrichtigung will, schaltet
+// ihn bewusst frei -- er verlaesst damit die eigene Maschine.
+const B_URL = (process.env.BENACHRICHTIGUNG_URL || '').trim();
+const B_VORSCHAU = (process.env.BENACHRICHTIGUNG_VORSCHAU || '').toLowerCase() === 'ja';
+const B_GRUPPEN = (process.env.BENACHRICHTIGUNG_GRUPPEN || '').toLowerCase() === 'ja';
+const B_PRIO = (process.env.BENACHRICHTIGUNG_PRIO || 'default').trim();
+
 if (!TOKEN || TOKEN.length < 16) {
   console.error('KOPPLER_TOKEN fehlt oder ist zu kurz (mindestens 16 Zeichen).');
   process.exit(1);
@@ -89,6 +102,55 @@ client.on('disconnected', (grund) => {
 client.on('auth_failure', (m) => {
   zustand = { status: 'anmeldung_fehlgeschlagen', qr: null, seit: Date.now(), nummer: null };
   console.error('Anmeldung fehlgeschlagen:', m);
+});
+
+// Eingehende Nachricht -> Benachrichtigung. Feuert nur bei gesetzter URL.
+// Fehler hier duerfen den Koppler nie stoeren: fire-and-forget mit Fangnetz.
+function benachrichtige(titel, text) {
+  if (!B_URL) return;
+  try {
+    const u = new URL(B_URL);
+    const mod = u.protocol === 'http:' ? require('http') : require('https');
+    const koerper = Buffer.from(text || 'Neue Nachricht', 'utf8');
+    const req = mod.request(u, {
+      method: 'POST',
+      timeout: 8000,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Length': koerper.length,
+        // ntfy liest diese Header; andere Dienste ignorieren sie.
+        'Title': encodeURIComponent(titel || 'WhatsApp').replace(/%20/g, ' '),
+        'Priority': B_PRIO,
+        'Tags': 'speech_balloon',
+      },
+    }, (res) => { res.resume(); });     // Antwort verwerfen, aber abfliessen lassen
+    req.on('error', (e) => console.error('Benachrichtigung fehlgeschlagen:', e.message));
+    req.on('timeout', () => req.destroy());
+    req.end(koerper);
+  } catch (e) {
+    console.error('Benachrichtigung fehlgeschlagen:', e.message);
+  }
+}
+
+client.on('message', async (m) => {
+  if (!B_URL || m.fromMe) return;
+  try {
+    const chat = await m.getChat().catch(() => null);
+    if (chat && chat.isGroup && !B_GRUPPEN) return;   // Gruppen per Vorgabe aus
+    let name = null;
+    if (chat && chat.isGroup) {
+      name = chat.name || 'Gruppe';
+    } else {
+      const k = await m.getContact().catch(() => null);
+      name = (k && (k.pushname || k.name || k.number)) || 'Unbekannt';
+    }
+    const text = B_VORSCHAU
+      ? `${(m.body || '').slice(0, 140) || '[ohne Text]'}`
+      : `Neue Nachricht von ${name}`;
+    benachrichtige(name, text);
+  } catch (e) {
+    console.error('Benachrichtigung fehlgeschlagen:', e.message);
+  }
 });
 
 client.initialize().catch((e) => {

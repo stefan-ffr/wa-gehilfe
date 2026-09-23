@@ -52,6 +52,31 @@ wichtigsten:
 | `KOPPLER_TOKEN` | — | **Pflicht**, Dienst ↔ Koppler |
 | `WHISPER_MODELL` | `base` | Transkription (`tiny`/`base`/`small`) |
 
+## Benachrichtigungen
+
+Der Koppler kann bei eingehenden Nachrichten ein POST an eine frei wählbare
+URL schicken (`BENACHRICHTIGUNG_URL`, [ntfy](https://github.com/binwiederhier/ntfy)-kompatibel).
+Empfohlen: ein selbst gehostetes **ntfy** plus die ntfy-App auf dem Handy --
+plattformübergreifend, quelloffen, ohne eigenes App-Signing. Per Vorgabe geht
+nur „Neue Nachricht von X" hinaus (kein Inhalt, keine Gruppen).
+
+**Roadmap:**
+- **Android-App (GitHub Releases):** ein Wrapper um die PWA, der die
+  ntfy-Anbindung gleich mitbringt -- eine App statt zwei. Der Empfang läuft
+  über einen Vordergrunddienst mit dauerhafter Verbindung zum ntfy-Server
+  (bzw. UnifiedPush), **ohne** Google FCM. Das ist logisch und machbar.
+- **iOS:** hier hilft das Einbauen der ntfy-Endpunkte in eine eigene App
+  **nicht** über die Plattformgrenze. iOS liefert Hintergrund-Push
+  ausschließlich über APNs, und dafür braucht es ein kostenpflichtiges
+  Apple-Konto samt Push-Schlüssel. Eine per Sideloadly geladene App bekäme
+  Benachrichtigungen nur, solange sie im Vordergrund läuft -- nutzlos fürs
+  Melden bei geschlossener App. Pragmatisch bleibt: installierte PWA plus die
+  ntfy-App aus dem App Store (die die APNs-Anbindung bereits hat).
+
+In jedem Fall ist der Server-Haken (`BENACHRICHTIGUNG_URL`) die gemeinsame
+Grundlage -- ob der Empfänger die ntfy-App, ein eingebauter Android-Empfänger
+oder später etwas anderes ist.
+
 ## Lizenz
 
 [AGPL-3.0](LICENSE). Wer wa-gehilfe als Netzwerkdienst betreibt, muss den
