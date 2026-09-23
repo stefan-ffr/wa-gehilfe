@@ -1321,57 +1321,49 @@ def einrichtung(anfrage: Request, hinweis: str = "") -> Response:
     fertig = zugang.gesetzt(schluessel)
 
     modellteil = (
-        f"<p>&#10003; Schluessel hinterlegt &mdash; Anbieter <b>{esc_h(anbieter)}</b>, "
-        f"Modell <b>{esc_h(modell)}</b>.</p>"
+        f"<p>&#10003; {T('Schluessel hinterlegt','Key stored')} &mdash; {T('Anbieter','Provider')} <b>{esc_h(anbieter)}</b>, "
+        f"{T('Modell','Model')} <b>{esc_h(modell)}</b>.</p>"
         if fertig else
-        "<p>Noch kein Schluessel hinterlegt. Ohne ihn kann kein Entwurf "
-        "entstehen.</p>")
+        f"<p>{T('Noch kein Schluessel hinterlegt. Ohne ihn kann kein Entwurf entstehen.','No key stored yet. Without it no draft can be created.')}</p>")
 
     return HTMLResponse(f"""{kopf(T("Einrichtung","Setup"), zurueck="/einstellungen", aktiv="/einstellungen")}
-<h1>Einrichtung</h1>
+<h1>{T("Einrichtung","Setup")}</h1>
 <p class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{esc_h(hinweis)}</p>
 
-<h2>1. Modell</h2>
+<h2>1. {T("Modell","Model")}</h2>
 {modellteil}
 <form method="post" action="/einrichtung">
- <label>Anbieter
+ <label>{T("Anbieter","Provider")}
   <select name="anbieter">
    <option value="claude"{' selected' if anbieter == 'claude' else ''}>claude</option>
    <option value="openrouter"{' selected' if anbieter == 'openrouter' else ''}>openrouter</option>
   </select>
  </label>
- <label>Modell <input name="modell" value="{esc_h(modell)}" style="width:16rem"></label>
- <label>API-Schluessel
+ <label>{T("Modell","Model")} <input name="modell" value="{esc_h(modell)}" style="width:16rem"></label>
+ <label>{T("API-Schluessel","API key")}
   <input name="schluessel" type="password" autocomplete="off"
-         placeholder="{'unveraendert lassen' if fertig else 'sk-...'}" style="width:24rem">
+         placeholder="{T('unveraendert lassen','leave unchanged') if fertig else 'sk-...'}" style="width:24rem">
  </label>
- <label>Arbeitsbereich (nur Claude, nur falls noetig)
+ <label>{T("Arbeitsbereich (nur Claude, nur falls noetig)","Workspace (Claude only, only if needed)")}
   <input name="arbeitsbereich" value="{esc_h(arbeitsbereich())}" style="width:24rem"
-         placeholder="leer lassen, solange es ohne geht">
+         placeholder="{T('leer lassen, solange es ohne geht','leave empty while it works without')}">
  </label>
- <button type="submit">Speichern</button>
+ <button type="submit">{T("Speichern","Save")}</button>
 </form>
-<p class="text-sm text-slate-600">Meldet die Schnittstelle <em>"This API key is not scoped to a
-workspace"</em>, gehoert hier die Workspace-ID aus der Anthropic-Konsole hinein
-&mdash; oder du legst dort einen Schluessel an, der einem Arbeitsbereich
-zugeordnet ist. Beides geht.</p>
+<p class="text-sm text-slate-600">{T('Meldet die Schnittstelle <em>"This API key is not scoped to a workspace"</em>, gehoert hier die Workspace-ID aus der Anthropic-Konsole hinein &mdash; oder du legst dort einen Schluessel an, der einem Arbeitsbereich zugeordnet ist. Beides geht.','If the API reports <em>"This API key is not scoped to a workspace"</em>, put the workspace ID from the Anthropic console here &mdash; or create a key there that is bound to a workspace. Either works.')}</p>
 
-<h2>2. WhatsApp verbinden</h2>
+<h2>2. {T("WhatsApp verbinden","Connect WhatsApp")}</h2>
 {koppel_abschnitt()}
 
-<h2>3. Browser-Erweiterung</h2>
-<p>Ordner <code>erweiterung/</code> unter <code>chrome://extensions</code> laden
-(Entwicklermodus &rarr; „Entpackte Erweiterung laden") und dort eintragen:</p>
+<h2>3. {T("Browser-Erweiterung","Browser extension")}</h2>
+<p>{T('Ordner <code>erweiterung/</code> unter <code>chrome://extensions</code> laden (Entwicklermodus &rarr; „Entpackte Erweiterung laden") und dort eintragen:','Load the <code>erweiterung/</code> folder at <code>chrome://extensions</code> (developer mode &rarr; "Load unpacked") and enter there:')}</p>
 <ul>
- <li>Adresse: <code>{esc_h(str(anfrage.base_url).rstrip('/'))}</code></li>
- <li>Zugangstoken: <code>{esc_h(zugang.zugang_token())}</code></li>
+ <li>{T("Adresse","Address")}: <code>{esc_h(str(anfrage.base_url).rstrip('/'))}</code></li>
+ <li>{T("Zugangstoken","Access token")}: <code>{esc_h(zugang.zugang_token())}</code></li>
 </ul>
-<p class="text-sm text-slate-600">Der Token steht hier, weil diese Seite ohnehin nur erreicht, wer
-sich bereits ausgewiesen hat. Ihn woanders zu suchen, waere nur unbequemer,
-nicht sicherer.</p>
+<p class="text-sm text-slate-600">{T("Der Token steht hier, weil diese Seite ohnehin nur erreicht, wer sich bereits ausgewiesen hat. Ihn woanders zu suchen, waere nur unbequemer, nicht sicherer.","The token is shown here because only someone already signed in reaches this page. Hiding it elsewhere would be less convenient, not more secure.")}</p>
 
-<p><a href="/?trotzdem=1">Zur Uebersicht &rarr;</a> &mdash; geht auch, solange
-noch etwas fehlt; es ist dann nur weniger zu sehen.</p>{fuss()}""")
+<p><a href="/?trotzdem=1">{T("Zur Uebersicht","To the overview")} &rarr;</a> &mdash; {T("geht auch, solange noch etwas fehlt; es ist dann nur weniger zu sehen.","works even while something is still missing; there is just less to see.")}</p>{fuss()}""")
 
 
 @app.post("/einrichtung")
@@ -1383,7 +1375,7 @@ def einrichtung_speichern(anfrage: Request,
     if not zugang.angemeldet(anfrage):
         return anmeldeseite()
     if anbieter not in ("claude", "openrouter"):
-        return einrichtung(anfrage, "Unbekannter Anbieter.")
+        return einrichtung(anfrage, T("Unbekannter Anbieter.","Unknown provider."))
     zugang.einstellung_schreiben("anbieter", anbieter)
     if modell.strip():
         zugang.einstellung_schreiben("modell", modell.strip())
@@ -1407,12 +1399,10 @@ def koppeln(anfrage: Request) -> Response:
     if not zugang.angemeldet(anfrage):
         return anmeldeseite()
     return HTMLResponse(f"""{kopf(T("WhatsApp verbinden","Connect WhatsApp"), zurueck="/einstellungen", aktiv="/einstellungen")}
-<p><a href="/">&larr; Uebersicht</a></p>
-<h1>WhatsApp verbinden</h1>
+<p><a href="/">&larr; {T("Uebersicht","Overview")}</a></p>
+<h1>{T("WhatsApp verbinden","Connect WhatsApp")}</h1>
 {koppel_abschnitt()}
-<p class="text-sm text-slate-600">Hinweis: Eine verbundene Sitzung ist ein inoffizieller Client.
-Dafuer werden Nummern gesperrt, und sie belegt einen der vier Plaetze fuer
-verknuepfte Geraete.</p>{fuss()}""")
+<p class="text-sm text-slate-600">{T("Hinweis: Eine verbundene Sitzung ist ein inoffizieller Client. Dafuer werden Nummern gesperrt, und sie belegt einen der vier Plaetze fuer verknuepfte Geraete.","Note: a linked session is an unofficial client. Numbers get banned for that, and it takes one of the four linked-device slots.")}</p>{fuss()}""")
 
 
 @app.post("/koppeln-loesen")
@@ -2096,7 +2086,7 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
         return anmeldeseite()
     if not koppler_da():
         return HTMLResponse(kopf(T("Gespraech","Conversation"), zurueck="/") +
-                            '<p class="text-red-700">Kein Koppler.</p>' + fuss())
+                            f'<p class="text-red-700">{T("Kein Koppler.","No connector.")}</p>' + fuss())
 
     roh = koppler(f"/nachrichten?chat={urllib.parse.quote(id)}&anzahl={anzahl}")
     chats = koppler("/chats")
@@ -2133,13 +2123,13 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
             gross = "max-h-40" if typ == "sticker" else "max-h-80"
             zusatz += (f'<a href="/medien?wa_id={esc_h(wa)}" target="_blank">'
                        f'<img src="/medien?wa_id={esc_h(wa)}" loading="lazy"'
-                       f' alt="Bild" class="mt-1 rounded-lg {gross} w-auto">'
+                       f' alt="{T("Bild","Image")}" class="mt-1 rounded-lg {gross} w-auto">'
                        f'</a>')
         elif wa and typ in ("video", "document"):
             zusatz += (f'<p class="mt-1"><a class="text-sm underline" '
                        f'href="/medien?wa_id={esc_h(wa)}" target="_blank">'
-                       f'{"Video" if typ == "video" else "Dokument"} '
-                       f'oeffnen</a></p>')
+                       f'{T("Video","Video") if typ == "video" else T("Dokument","Document")} '
+                       f'{T("oeffnen","open")}</a></p>')
 
         # Sprachnachricht: abspielbar, dazu die Abschrift oder ein Knopf dafuer.
         if n.get("typ") in ("ptt", "audio") and n.get("id"):
@@ -2159,7 +2149,7 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
  <input type="hidden" name="id" value="{esc_h(id)}">
  <input type="hidden" name="wa_id" value="{esc_h(n['id'])}">
  <button class="text-xs underline text-slate-600 hover:text-slate-900"
-    >abschreiben</button></form>"""
+    >{T("abschreiben","transcribe")}</button></form>"""
 
         # Bei einem Bild ist m.body die Bildunterschrift. Fehlt sie, waere
         # "Bild" ueber dem Bild nur Wiederholung -- dann bleibt die Zeile weg.
@@ -2182,7 +2172,7 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
             knopf_stil = "text-[11px] text-slate-400 hover:text-slate-700"
             teile_g = [
                 f'<a href="/gespraech?id={esc_h(id)}&zitat={esc_h(wa)}"'
-                f' class="{knopf_stil}">antworten</a>']
+                f' class="{knopf_stil}">{T("antworten","reply")}</a>']
             for e in ("👍", "❤️", "😂"):
                 teile_g.append(
                     f'<form method="post" action="/reaktion" class="inline">'
@@ -2196,14 +2186,14 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
                     f'<input type="hidden" name="id" value="{esc_h(id)}">'
                     f'<input type="hidden" name="wa_id" value="{esc_h(wa)}">'
                     f'<input type="hidden" name="was" value="loeschen">'
-                    f'<button class="{knopf_stil}">loeschen</button></form>')
+                    f'<button class="{knopf_stil}">{T("loeschen","delete")}</button></form>')
             griffe = (f'<div class="flex gap-2 items-center mt-1 '
                       f'{"justify-end" if eigen else ""}">'
                       + "".join(teile_g) + "</div>")
 
-        zitat_hinweis = ('<p class="text-[11px] text-slate-500 border-l-2 '
-                         'border-slate-300 pl-2 mb-1">Antwort auf eine '
-                         'Nachricht</p>' if n.get("hat_zitat") else "")
+        zitat_hinweis = (f'<p class="text-[11px] text-slate-500 border-l-2 '
+                         f'border-slate-300 pl-2 mb-1">{T("Antwort auf eine Nachricht","Reply to a message")}</p>'
+                         if n.get("hat_zitat") else "")
 
         blasen.append(f"""<div class="max-w-[85%] rounded-2xl border {stil}
      px-3.5 py-2 shadow-sm">
@@ -2226,10 +2216,10 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
             f'<li class="py-1"><span class="rounded bg-slate-100 text-xs '
             f'px-1.5 py-0.5 mr-1.5">{esc_h(z["bereich"])}</span>'
             f'{esc_h(z["aussage"])} <span class="text-xs text-slate-500">'
-            f'aus {esc_h(z["quelle"])}</span></li>' for z in aus_gruppen)
+            f'{T("aus","from")} {esc_h(z["quelle"])}</span></li>' for z in aus_gruppen)
         wissen_html = f"""<details class="mb-4 rounded-xl border border-slate-200
      bg-white px-4 py-3">
- <summary class="cursor-pointer font-medium text-sm">Bekannt ueber diesen Chat
+ <summary class="cursor-pointer font-medium text-sm">{T("Bekannt ueber diesen Chat","Known about this chat")}
   ({len(bekannt) + len(aus_gruppen)})</summary>
  <ul class="mt-2 text-sm divide-y divide-slate-100">{punkte}</ul>
 </details>"""
@@ -2238,13 +2228,13 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
     zitat_karte = ""
     if zitat:
         zitierter = next((x for x in roh if x.get("id") == zitat), None)
-        auszug = (nachricht_text(zitierter)[:160] if zitierter else "Nachricht")
+        auszug = (nachricht_text(zitierter)[:160] if zitierter else T("Nachricht","Message"))
         zitat_karte = f"""<div class="mt-3 rounded-lg border-l-4 border-slate-400
      bg-white px-3 py-2 flex items-start gap-2">
- <span class="flex-1 text-sm text-slate-700">Antwort auf:
+ <span class="flex-1 text-sm text-slate-700">{T("Antwort auf:","Replying to:")}
   <em>{esc_h(auszug)}</em></span>
  <a href="/gespraech?id={esc_h(id)}" class="text-slate-400 hover:text-slate-700"
-    aria-label="Zitat entfernen">&times;</a>
+    aria-label="{T('Zitat entfernen','Remove quote')}">&times;</a>
 </div>"""
 
     # Ein erkannter Termin: aenderbar, und erst dann eine der beiden Aktionen.
@@ -2259,7 +2249,7 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
                   "focus:outline-none focus:ring-2 focus:ring-slate-400")
         termin_html = f"""<div class="mt-4 rounded-xl border border-sky-300
      bg-sky-50 p-4">
- <p class="font-medium mb-2">Termin erkannt</p>
+ <p class="font-medium mb-2">{T("Termin erkannt","Appointment detected")}</p>
  <form method="post" action="/termin-whatsapp" class="grid gap-2">
   <input type="hidden" name="id" value="{esc_h(id)}">
   <input name="t_titel" value="{esc_h(t_titel)}" required class="{f_stil}">
@@ -2269,17 +2259,16 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
    <input type="datetime-local" name="t_ende" value="{esc_h(t_ende)}"
       class="{f_stil}">
   </div>
-  <input name="t_ort" value="{esc_h(t_ort)}" placeholder="Ort"
+  <input name="t_ort" value="{esc_h(t_ort)}" placeholder="{T('Ort','Place')}"
      class="{f_stil}">
-  <input name="t_text" value="{esc_h(t_text)}" placeholder="Notiz"
+  <input name="t_text" value="{esc_h(t_text)}" placeholder="{T('Notiz','Note')}"
      class="{f_stil}">
   <div class="flex flex-wrap items-center gap-2 mt-1">
    <button class="px-4 py-2 rounded-lg bg-sky-700 text-white text-sm
-      font-medium hover:bg-sky-800">In WhatsApp anlegen</button>
+      font-medium hover:bg-sky-800">{T("In WhatsApp anlegen","Create in WhatsApp")}</button>
    <a href="/termin.ics?{felder}" class="px-4 py-2 rounded-lg border
-      border-slate-300 bg-white text-sm hover:bg-slate-50">.ics laden</a>
-   <span class="text-xs text-slate-600 ml-auto">Anlegen ist eine Nachricht
-    an den Chat.</span>
+      border-slate-300 bg-white text-sm hover:bg-slate-50">{T(".ics laden","Download .ics")}</a>
+   <span class="text-xs text-slate-600 ml-auto">{T("Anlegen ist eine Nachricht an den Chat.","Creating it sends a message to the chat.")}</span>
   </div>
  </form>
 </div>"""
@@ -2290,9 +2279,9 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
     return HTMLResponse(kopf(titel, zurueck="/") + wissen_html + f"""
 <p class="text-center mb-2"><a class="text-sm underline text-slate-600"
  href="/gespraech?id={urllib.parse.quote(id)}&anzahl={anzahl + 60}"
- >aeltere Nachrichten laden</a></p>
+ >{T("aeltere Nachrichten laden","load older messages")}</a></p>
 <div class="flex flex-col gap-2 mb-5">{''.join(blasen) or
- '<p class="text-slate-500">Keine Nachrichten.</p>'}</div>
+ f'<p class="text-slate-500">{T("Keine Nachrichten.","No messages.")}</p>'}</div>
 {warnung}
 {zitat_karte}
 <form method="post" action="/senden"
@@ -2300,17 +2289,17 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
  <input type="hidden" name="id" value="{esc_h(id)}">
  <input type="hidden" name="zitat_id" value="{esc_h(zitat)}">
  <input type="hidden" name="quelle" value="{'vorschlag' if entwurf else 'selbst'}">
- <textarea name="text" rows="3" required placeholder="Antwort schreiben&hellip;"
+ <textarea name="text" rows="3" required placeholder="{T('Antwort schreiben','Write a reply')}&hellip;"
     class="w-full rounded-xl border border-slate-300 px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-slate-400"
  >{esc_h(entwurf or '')}</textarea>
  <div class="flex items-center gap-2 mt-2">
   <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white
-     font-medium hover:bg-emerald-700">Senden</button>
+     font-medium hover:bg-emerald-700">{T("Senden","Send")}</button>
   <button type="submit" form="vorschlag-formular"
      class="px-4 py-2 rounded-lg border border-slate-300 bg-white
-            hover:bg-slate-50">Vorschlag holen</button>
-  <span class="text-xs text-slate-500 ml-auto">Eigener Text geht direkt raus, ein Vorschlag wird vorher gezeigt.</span>
+            hover:bg-slate-50">{T("Vorschlag holen","Get suggestion")}</button>
+  <span class="text-xs text-slate-500 ml-auto">{T("Eigener Text geht direkt raus, ein Vorschlag wird vorher gezeigt.","Your own text goes straight out; a suggestion is shown first.")}</span>
  </div>
 </form>
 <form method="post" action="/vorschlag" id="vorschlag-formular">
@@ -2323,23 +2312,23 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
  <input type="file" name="datei" required
     class="text-sm file:mr-2 file:px-3 file:py-1.5 file:rounded-lg
            file:border file:border-slate-300 file:bg-white file:text-sm">
- <input name="text" placeholder="Bildunterschrift"
+ <input name="text" placeholder="{T('Bildunterschrift','Caption')}"
     class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm flex-1
            min-w-40">
  <button class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white
-    text-sm hover:bg-slate-50">Datei senden</button>
+    text-sm hover:bg-slate-50">{T("Datei senden","Send file")}</button>
 </form>
 {termin_html}
 <div class="flex flex-wrap items-center gap-4 mt-3">
  <form method="post" action="/termin-erkennen">
   <input type="hidden" name="id" value="{esc_h(id)}">
   <button class="text-sm underline text-slate-600 hover:text-slate-900"
-     >Termin im Verlauf suchen</button>
+     >{T("Termin im Verlauf suchen","Find appointment in history")}</button>
  </form>
  <form method="post" action="/gelesen">
   <input type="hidden" name="id" value="{esc_h(id)}">
   <button class="text-sm underline text-slate-600 hover:text-slate-900"
-     >als gelesen markieren</button>
+     >{T("als gelesen markieren","mark as read")}</button>
  </form>
 </div>""" + fuss(ans_ende=True, aktualisieren=15))
 
@@ -2709,8 +2698,8 @@ def suche(anfrage: Request, q: str = "", chat: str = "") -> Response:
     formular = f"""<form method="get" action="/suche" class="mb-4">
  <input type="hidden" name="chat" value="{esc_h(chat)}">
  <input name="q" value="{esc_h(q)}" autofocus
-    placeholder="{'In diesem Chat suchen&hellip;' if im_chat
-                  else 'Name, Nummer oder Nachricht&hellip;'}"
+    placeholder="{T('In diesem Chat suchen','Search in this chat') if im_chat
+                  else T('Name, Nummer oder Nachricht','Name, number or message')}&hellip;"
     class="{feld}">
 </form>"""
 
@@ -2743,17 +2732,15 @@ def suche(anfrage: Request, q: str = "", chat: str = "") -> Response:
    <span class="block text-xs text-slate-500"
       >{zeit_kurz(c.get('letzte_zeit'))}</span>
   </span>
-  {'<span class="ml-2 shrink-0 rounded-md bg-slate-100 text-slate-600 '
-   'text-xs px-1.5 py-0.5">Gruppe</span>' if c.get('gruppe') else ''}
-  {'<span class="ml-2 shrink-0 rounded-md bg-slate-100 text-slate-500 '
-   'text-xs px-1.5 py-0.5">Archiv</span>' if c.get('archiviert') else ''}
+  {f'<span class="ml-2 shrink-0 rounded-md bg-slate-100 text-slate-600 text-xs px-1.5 py-0.5">{T("Gruppe","Group")}</span>' if c.get('gruppe') else ''}
+  {f'<span class="ml-2 shrink-0 rounded-md bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5">{T("Archiv","Archive")}</span>' if c.get('archiviert') else ''}
  </a></li>""" for c in passende[:25])
-            mehr = (f'<li class="px-3 py-2 text-xs text-slate-500">und '
-                    f'{len(passende) - 25} weitere</li>'
+            mehr = (f'<li class="px-3 py-2 text-xs text-slate-500">{T("und","and")} '
+                    f'{len(passende) - 25} {T("weitere","more")}</li>'
                     if len(passende) > 25 else "")
             chat_html = (
                 f'<p class="text-xs font-medium uppercase tracking-wide '
-                f'text-slate-500 mb-1">Chats ({len(passende)})</p>'
+                f'text-slate-500 mb-1">{T("Chats","Chats")} ({len(passende)})</p>'
                 f'<ul class="mb-5 rounded-xl border border-slate-200 bg-white '
                 f'divide-y divide-slate-100 overflow-hidden">{zs}{mehr}</ul>')
 
@@ -2774,17 +2761,15 @@ def suche(anfrage: Request, q: str = "", chat: str = "") -> Response:
   <span class="block">{esc_h((m.get('text') or '')[:200])}</span>
  </a></li>""" for m in treffer)
         if not zeilen:
-            zeilen = ('<li class="py-3 text-slate-500">keine Nachricht mit '
-                      'diesem Wort</li>')
+            zeilen = (f'<li class="py-3 text-slate-500">{T("keine Nachricht mit diesem Wort","no message with that word")}</li>')
         nachrichten_html = (
             f'<p class="text-xs font-medium uppercase tracking-wide '
-            f'text-slate-500 mb-1">Nachrichten ({anzahl})</p>'
+            f'text-slate-500 mb-1">{T("Nachrichten","Messages")} ({anzahl})</p>'
             f'<ul class="rounded-xl border border-slate-200 bg-white '
             f'divide-y divide-slate-100 px-2">{zeilen}</ul>')
 
     leer = ("" if chat_html or anzahl else
-            '<p class="text-sm text-slate-600 mb-3">Kein Chat und keine '
-            'Nachricht dazu gefunden.</p>')
+            f'<p class="text-sm text-slate-600 mb-3">{T("Kein Chat und keine Nachricht dazu gefunden.","No chat and no message found for that.")}</p>')
 
     return HTMLResponse(kopf(f'{T("Suche","Search")}: {q}', zurueck="/") + formular
                         + leer + chat_html + nachrichten_html + fuss())
@@ -2992,7 +2977,7 @@ def vorschlag(anfrage: Request, id: str = Form(...)) -> Response:
 
 def bestaetigungsseite(titel: str, ziel_pfad: str, felder: dict[str, str],
                        vorschau: str, zurueck: str,
-                       knopf: str = "Ja, senden") -> HTMLResponse:
+                       knopf: str | None = None) -> HTMLResponse:
     """Zwischenschritt vor allem, was den Chat verlaesst.
 
     Ein Klick auf "Senden" ging vorher sofort raus. Bei etwas, das sich nicht
@@ -3000,12 +2985,14 @@ def bestaetigungsseite(titel: str, ziel_pfad: str, felder: dict[str, str],
     das alle im Chat sehen -- ist das ein Klick zu wenig. Hier steht
     schwarz auf weiss, WAS an WEN geht, bevor es geht.
     """
+    if knopf is None:
+        knopf = T("Ja, senden", "Yes, send")
     versteckt = "".join(
         f'<input type="hidden" name="{esc_h(k)}" value="{esc_h(v)}">'
         for k, v in felder.items())
     return HTMLResponse(kopf(titel, zurueck=zurueck) + f"""
 <div class="rounded-xl border border-amber-300 bg-amber-50 p-4">
- <p class="font-medium">Das geht gleich raus:</p>
+ <p class="font-medium">{T("Das geht gleich raus:","This is about to go out:")}</p>
  <div class="mt-2 rounded-lg bg-white border border-slate-200 p-3
       whitespace-pre-wrap break-words">{esc_h(vorschau)}</div>
  <form method="post" action="{esc_h(ziel_pfad)}" class="flex gap-2 mt-4">
@@ -3014,7 +3001,7 @@ def bestaetigungsseite(titel: str, ziel_pfad: str, felder: dict[str, str],
   <button class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium
      hover:bg-emerald-700">{esc_h(knopf)}</button>
   <a href="{esc_h(zurueck)}" class="px-4 py-2 rounded-lg border
-     border-slate-300 bg-white hover:bg-slate-50">Abbrechen</a>
+     border-slate-300 bg-white hover:bg-slate-50">{T("Abbrechen","Cancel")}</a>
  </form>
 </div>""" + fuss())
 
@@ -3103,13 +3090,13 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
         punkte = "".join(f"""<li class="flex items-start gap-2 py-1.5">
  <span class="shrink-0 rounded bg-slate-100 text-slate-600 text-xs px-1.5
     py-0.5 mt-0.5">{esc_h(z['bereich'])}</span>
- {'<span class="shrink-0 rounded bg-sky-100 text-sky-800 text-xs px-1.5 py-0.5 mt-0.5">eigen</span>'
+ {'<span class="shrink-0 rounded bg-sky-100 text-sky-800 text-xs px-1.5 py-0.5 mt-0.5">{T("eigen","own")}</span>'
   if z['herkunft'] == 'hand' else ''}
  <span class="flex-1 text-sm">{esc_h(z['aussage'])}</span>
  <form method="post" action="/wissen-loeschen" class="shrink-0">
   <input type="hidden" name="id" value="{z['id']}">
-  <button class="text-slate-400 hover:text-red-600 px-1" title="streichen"
-     aria-label="streichen">&times;</button>
+  <button class="text-slate-400 hover:text-red-600 px-1" title="{T('streichen','remove')}"
+     aria-label="{T('streichen','remove')}">&times;</button>
  </form></li>""" for z in zeilen)
         teile.append(f"""<details class="rounded-xl border border-slate-200
      bg-white px-4 py-3">
@@ -3132,20 +3119,19 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
 
     an = auto_an()
     if an:
-        letzte = (f"zuletzt {zeit_kurz(laeufe[0]['zuletzt'])}"
-                  if laeufe else "noch keine Runde gelaufen")
-        auto_text = (f"Alle {takt(AUTO_INTERVALL)} bis zu {AUTO_JE_RUNDE} Chats, "
-                     f"{offen_n} bereits angesehen. {letzte}.")
-        auto_klein = ("Einzelchats und Gruppen. Bei Gruppen geht es um das "
-                      "Gefuege: wer dazugehoert, was ansteht, welcher Ton dort "
-                      "herrscht.")
+        letzte = (T(f"zuletzt {zeit_kurz(laeufe[0]['zuletzt'])}", f"last {zeit_kurz(laeufe[0]['zuletzt'])}")
+                  if laeufe else T("noch keine Runde gelaufen","no round yet"))
+        auto_text = T(f"Alle {takt(AUTO_INTERVALL)} bis zu {AUTO_JE_RUNDE} Chats, {offen_n} bereits angesehen. {letzte}.",
+                      f"Every {takt(AUTO_INTERVALL)}, up to {AUTO_JE_RUNDE} chats, {offen_n} reviewed so far. {letzte}.")
+        auto_klein = T("Einzelchats und Gruppen. Bei Gruppen geht es um das Gefuege: wer dazugehoert, was ansteht, welcher Ton dort herrscht.",
+                       "Direct chats and groups. For groups it is about the fabric: who belongs, what is coming up, what tone prevails.")
     else:
-        auto_text = "Es wird nur ausgewertet, was du von Hand anstoesst."
+        auto_text = T("Es wird nur ausgewertet, was du von Hand anstoesst.","Only what you trigger by hand gets analysed.")
         auto_klein = ""
 
     fehler_html = ""
     if an and laeufe and laeufe[0]["fehler"]:
-        fehler_html = (f'<p class="mt-2 text-sm text-red-700">Zuletzt: '
+        fehler_html = (f'<p class="mt-2 text-sm text-red-700">{T("Zuletzt","Last")}: '
                        f'{esc_h(laeufe[0]["fehler"])}</p>')
 
     knopf = ("px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium "
@@ -3154,19 +3140,17 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
             "focus:outline-none focus:ring-2 focus:ring-slate-400")
 
     fehlt = ("" if verbunden else f"""<p class="text-sm text-red-700 mt-2">
- Dafuer wird die gekoppelte Sitzung gebraucht &mdash; nur sie sieht mehr als
- den offenen Ausschnitt. <a class="underline" href="/koppeln">Verbinden</a></p>""")
+ {T("Dafuer wird die gekoppelte Sitzung gebraucht &mdash; nur sie sieht mehr als den offenen Ausschnitt.","This needs the linked session &mdash; only it sees more than the open excerpt.")} <a class="underline" href="/koppeln">{T("Verbinden","Connect")}</a></p>""")
 
     return HTMLResponse(kopf(T("Wissen","Knowledge"), aktiv="/wissen") + f"""
-<p class="text-sm text-slate-600 mb-4">Abgeleitet aus dem Verlauf und beim
-Entwerfen mitverwendet. Was nicht stimmt, streichst du einzeln.</p>
+<p class="text-sm text-slate-600 mb-4">{T("Abgeleitet aus dem Verlauf und beim Entwerfen mitverwendet. Was nicht stimmt, streichst du einzeln.","Derived from the history and used when drafting. Remove anything that is wrong, item by item.")}</p>
 
 <div class="rounded-xl border border-slate-200 bg-white p-4 mb-4">
  <div class="flex items-center gap-2">
   <span class="w-2.5 h-2.5 rounded-full {'bg-emerald-500' if an else 'bg-slate-300'}"></span>
-  <span class="font-medium">Automatisch sammeln</span>
+  <span class="font-medium">{T("Automatisch sammeln","Collect automatically")}</span>
   <form method="post" action="/wissen-automatisch" class="ml-auto">
-   <button class="{knopf}">{'Abschalten' if an else 'Einschalten'}</button>
+   <button class="{knopf}">{T("Abschalten","Turn off") if an else T("Einschalten","Turn on")}</button>
   </form>
  </div>
  <p class="text-sm text-slate-600 mt-2">{auto_text}</p>
@@ -3175,37 +3159,34 @@ Entwerfen mitverwendet. Was nicht stimmt, streichst du einzeln.</p>
 </div>
 
 <div class="rounded-xl border border-slate-200 bg-white p-4 mb-4">
- <p class="font-medium mb-2">Einzelnen Chat jetzt auswerten</p>
+ <p class="font-medium mb-2">{T("Einzelnen Chat jetzt auswerten","Analyse one chat now")}</p>
  <form method="post" action="/wissen-aufbauen"
        class="flex flex-wrap items-center gap-2">
   {chat_auswahl("chat") if verbunden else ''}
-  <button class="{knopf}" {'' if verbunden else 'disabled'}>Auswerten</button>
+  <button class="{knopf}" {'' if verbunden else 'disabled'}>{T("Auswerten","Analyse")}</button>
  </form>{fehlt}
 </div>
 
 <div class="rounded-xl border border-slate-200 bg-white p-4 mb-6">
- <p class="font-medium mb-1">Selbst etwas eintragen</p>
- <p class="text-sm text-slate-600 mb-3">Was im Verlauf nie stand, kann das
- Modell nicht daraus lesen: &bdquo;arbeitet Schicht&ldquo;, &bdquo;nie vor
- 10 Uhr anrufen&ldquo;. Eigene Eintraege bleiben stehen, auch wenn der
- Verlauf erneut ausgewertet wird.</p>
+ <p class="font-medium mb-1">{T("Selbst etwas eintragen","Add something yourself")}</p>
+ <p class="text-sm text-slate-600 mb-3">{T("Was im Verlauf nie stand, kann das Modell nicht daraus lesen: &bdquo;arbeitet Schicht&ldquo;, &bdquo;nie vor 10 Uhr anrufen&ldquo;. Eigene Eintraege bleiben stehen, auch wenn der Verlauf erneut ausgewertet wird.","What never appeared in the history the model cannot infer: &ldquo;works shifts&rdquo;, &ldquo;never call before 10&rdquo;. Your own entries stay, even when the history is analysed again.")}</p>
  <form method="post" action="/wissen-ergaenzen"
        class="flex flex-wrap items-center gap-2">
   {chat_auswahl("chat") if verbunden else
-   f'<input name="chat" placeholder="Chatname" required class="{feld}">'}
+   f'<input name="chat" placeholder="{T("Chatname","Chat name")}" required class="{feld}">'}
   <select name="bereich" class="{feld}">
    {''.join(f'<option>{b}</option>'
             for b in ("Person", "Beziehung", "Vorlieben", "Vorhaben", "Thema", "Ton"))}
   </select>
-  <input name="aussage" required placeholder="Was gilt fuer diesen Chat?"
+  <input name="aussage" required placeholder="{T('Was gilt fuer diesen Chat?','What applies to this chat?')}"
      class="{feld} flex-1 min-w-48">
-  <button type="submit" class="{knopf}">Eintragen</button>
+  <button type="submit" class="{knopf}">{T("Eintragen","Add")}</button>
  </form>
 </div>
 
-<h2 class="font-semibold mb-2">Bekannt zu {len(geordnet)} Chats</h2>
+<h2 class="font-semibold mb-2">{T("Bekannt zu","Known for")} {len(geordnet)} {T("Chats","chats")}</h2>
 <div class="flex flex-col gap-2">{''.join(teile) or
- '<p class="text-slate-500">Noch nichts gelernt.</p>'}</div>""" + fuss())
+ f'<p class="text-slate-500">{T("Noch nichts gelernt.","Nothing learned yet.")}</p>'}</div>""" + fuss())
 
 
 @app.post("/wissen-aufbauen")
