@@ -2,7 +2,7 @@
 
 Die Browser-Erweiterung liest den offenen Chat aus dem DOM und fragt hier einen
 Antwortentwurf an. Der Entwurf wird ins Eingabefeld getippt -- gesendet wird
-NICHTS automatisch, das macht Stefan von Hand.
+NICHTS automatisch, das macht der Mensch von Hand.
 
 Warum ein eigener Dienst und nicht alles in der Erweiterung:
 
@@ -46,7 +46,7 @@ DB_PFAD = os.environ.get("ENTWURF_DB", "/daten/entwuerfe.sqlite3")
 
 # Startwerte aus der Umgebung. Was in der Einrichtung gesetzt wird, gewinnt --
 # siehe modell_konfig(). So laesst sich der Dienst in Betrieb nehmen, ohne
-# vorher eine Nomad-Variable zu pflegen.
+# vorher eine Umgebungsvariable zu pflegen.
 ANBIETER_START = os.environ.get("MODELL_ANBIETER", "claude").lower()
 MODELL_START = os.environ.get("MODELL", "claude-sonnet-5")
 API_SCHLUESSEL_START = os.environ.get("MODELL_API_SCHLUESSEL", "")
@@ -55,8 +55,8 @@ ARBEITSBEREICH_START = os.environ.get("ANTHROPIC_WORKSPACE_ID", "")
 BEISPIELE_MAX = int(os.environ.get("BEISPIELE_MAX", "6"))
 
 # Der eigene Name -- der, in dessen Namen die KI Entwuerfe schreibt und der in
-# der Nachrichtenansicht neben den eigenen Zeilen steht. Frueher fest "Stefan";
-# jetzt aus der Umgebung, damit der Dienst jedem gehoert, der ihn betreibt.
+# der Nachrichtenansicht neben den eigenen Zeilen steht. Aus der Umgebung,
+# damit der Dienst jedem gehoert, der ihn betreibt.
 EIGENER_NAME = os.environ.get("EIGENER_NAME", "Ich")
 
 # Domain fuer die UID der Kalender-Eintraege (.ics). Nur ein technischer,
@@ -64,15 +64,14 @@ EIGENER_NAME = os.environ.get("EIGENER_NAME", "Ich")
 KALENDER_DOMAIN = os.environ.get("KALENDER_DOMAIN", "wa-gehilfe.local")
 
 # Profil = Partition der Daten (Wissen, Entwuerfe) fuer den Fall mehrerer
-# getrennter Instanzen auf einer Datenbank. Eine Instanz braucht nur eine;
-# frueher hiess sie fest "stefan".
+# getrennter Instanzen auf einer Datenbank. Eine Instanz braucht nur eine.
 PROFIL_STANDARD = os.environ.get("PROFIL", "standard")
 
 def modell_konfig() -> tuple[str, str, str]:
     """Anbieter, Modell, Schluessel -- Einrichtung schlaegt Umgebung.
 
     Der Schluessel darf beim ersten Start fehlen. Dann fuehrt die Oberflaeche
-    durch die Einrichtung, statt dass jemand erst eine Nomad-Variable
+    durch die Einrichtung, statt dass jemand erst eine Umgebungsvariable
     anfassen muss.
     """
     return (
@@ -123,10 +122,10 @@ if os.path.isdir(_PWA):
 def _stilkennung() -> str:
     """Kurzer Fingerabdruck des Stilblatts, fuer die Adresse.
 
-    Ohne ihn behaelt der Browser die alte Datei. Am 22.09.2026 genau so
-    passiert: die Profilbilder kamen mit neuen Klassen, der Browser hatte
-    aber noch das Stilblatt von davor -- in dem es w-9 nicht gab, und das
-    Bild erschien in voller Groesse. Der Code war richtig, die Datei alt.
+    Ohne ihn behaelt der Browser die alte Datei. Genau so passiert: die
+    Profilbilder kamen mit neuen Klassen, der Browser hatte aber noch das
+    Stilblatt von davor -- in dem es w-9 nicht gab, und das Bild erschien in
+    voller Groesse. Der Code war richtig, die Datei alt.
     """
     pfad = os.path.join(_STATISCH, "app.css")
     try:
@@ -163,7 +162,7 @@ def schema_anlegen() -> None:
                 kontext     TEXT    NOT NULL,   -- JSON der letzten Nachrichten
                 entwurf     TEXT    NOT NULL,
                 ergebnis    TEXT,               -- gesendet | geaendert | verworfen
-                endfassung  TEXT,               -- was Stefan wirklich schrieb
+                endfassung  TEXT,               -- was der Mensch wirklich schrieb
                 bewertet_am REAL
             )
         """)
@@ -220,10 +219,10 @@ def schema_anlegen() -> None:
                       "herkunft TEXT NOT NULL DEFAULT 'modell'")
         # person: ueber WEN die Aussage geht, wenn das nicht der Chat selbst
         # ist. Gefuellt wird sie nur bei Gruppen -- dort schreiben mehrere,
-        # und eine Aussage ueber Oliver gehoert zu Oliver, nicht zur Gruppe.
+        # und eine Aussage ueber Alex gehoert zu Alex, nicht zur Gruppe.
         #
         # Ohne diese Spalte bliebe Gruppenwissen in der Gruppe liegen: die
-        # Tabelle haengt am Chat, und Olivers Einzelchat saehe nie, was die
+        # Tabelle haengt am Chat, und Alex' Einzelchat saehe nie, was die
         # Gruppe ueber ihn hergibt.
         if "person" not in spalten:
             v.execute("ALTER TABLE wissen ADD COLUMN person TEXT")
@@ -401,10 +400,10 @@ def modell_fragen(system: str, nutzer: str, hoechstens: int = 800) -> str:
     """Eine Frage ans Modell. `hoechstens` begrenzt die Laenge der ANTWORT.
 
     800 reichen fuer einen Entwurf -- das ist eine Nachricht, kein Aufsatz.
-    Fuer das Auswerten eines Verlaufs reichen sie nicht: am 21.09.2026 kam
-    die Antwort fuer "Rolf Mueller" nach 1636 Zeichen mitten im Satz zum
-    Stehen, mit einer offenen und keiner schliessenden Klammer. Der Aufrufer
-    sah nur "Antwort war kein JSON" und der ganze Chat blieb ohne Wissen.
+    Fuer das Auswerten eines Verlaufs reichen sie nicht: bei einem langen
+    Verlauf kam die Antwort nach gut 1600 Zeichen mitten im Satz zum Stehen,
+    mit einer offenen und keiner schliessenden Klammer. Der Aufrufer sah nur
+    "Antwort war kein JSON" und der ganze Chat blieb ohne Wissen.
     """
     anbieter, modell, schluessel = modell_konfig()
     if not zugang.gesetzt(schluessel):
@@ -489,11 +488,11 @@ Zu den EINZELNEN Beteiligten:
 - Zu jedem, der erkennbar hervortritt, eine eigene Aussage -- nicht nur zu
   einem.
 - Immer mit Namen, sonst laesst sich die Aussage niemandem zuordnen:
-  "Oliver kuemmert sich um die Technik", nicht "jemand kuemmert sich um die
+  "Alex kuemmert sich um die Technik", nicht "jemand kuemmert sich um die
   Technik".
 - Und setze bei solchen Aussagen zusaetzlich das Feld "person" auf genau
   diesen Namen, so wie er im Verlauf steht:
-  {"bereich": "Person", "person": "Oliver", "aussage": "Oliver kuemmert
+  {"bereich": "Person", "person": "Alex", "aussage": "Alex kuemmert
   sich um die Technik"}. Geht es um die Gruppe als Ganzes, lass "person"
   weg.
 - "Beziehung" auch untereinander, nicht nur zu mir: wer mit wem zu tun hat,
@@ -657,11 +656,11 @@ def wissen_aus_gruppen(chat: str, profil: str) -> list[sqlite3.Row]:
 
     In einer Gruppe faellt Wissen ueber die einzelnen Beteiligten an, und das
     gehoert zu ihnen, nicht zur Gruppe. Ohne diesen Griff bliebe es liegen:
-    die Tabelle haengt am Chat, und Olivers Einzelchat saehe nie, was die
+    die Tabelle haengt am Chat, und Alex' Einzelchat saehe nie, was die
     Technikgruppe ueber ihn hergibt.
 
     Zugeordnet wird ueber den Namen, und das ist die Schwachstelle: in der
-    Gruppe heisst jemand "Oliver", im Einzelchat "Oliver Jucker". Deshalb
+    Gruppe heisst jemand "Alex", im Einzelchat "Alex Muster". Deshalb
     zaehlt auch, wenn der eine Name mit dem anderen beginnt -- aber nur auf
     Wortgrenze, sonst faende "Jan" auch "Janine".
     """
@@ -702,18 +701,18 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
         # Leerer Verlauf ist kein Fehler, sondern nichts zu lernen. Vorher
         # flog hier eine 409, der Chat stand danach dauerhaft rot in der
         # Uebersicht und wurde jede Woche erneut vergeblich versucht.
-        # Am 21.09.2026 traf das drei Chats des ersten grossen Laufs.
+        # Beim ersten grossen Lauf traf das einzelne Chats.
         return {"chat": chat_name, "gelesen": 0, "neu": 0,
                 "hinweis": T("Kein Verlauf vorhanden.","No history available.")}
 
     # Auch hier ueber medien_als_text: eine Wissensrunde, die
     # Sprachnachrichten ueberspringt, uebersieht genau die Chats, in denen
-    # ueberwiegend gesprochen wird -- am 21.09.2026 waren das 15 Stueck, die
-    # als "nur Nachrichten ohne Text" durchfielen.
+    # ueberwiegend gesprochen wird -- die fielen als "nur Nachrichten ohne
+    # Text" durch.
     # bilder=False: Abschriften laufen hier lokal und kosten nichts, eine
     # Bildbeschreibung dagegen einen Modellaufruf. Die Wissensrunde geht
-    # ueber hunderte Chats -- zwei Bilder je Chat waeren bei 225 Chats
-    # vierhundertfuenfzig Aufrufe fuer etwas, das im Hintergrund laeuft.
+    # ueber hunderte Chats -- zwei Bilder je Chat waeren schon dort
+    # hunderte Aufrufe fuer etwas, das im Hintergrund laeuft.
     # Bilder werden dort beschrieben, wo jemand hinsieht: beim Entwurf.
     # Vorhandene Beschreibungen nimmt die Runde selbstverstaendlich mit.
     aufbereitet = medien_als_text(nachrichten, chat_name,
@@ -731,7 +730,7 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
     roh = modell_fragen(system, frage, hoechstens=WISSEN_ANTWORT_TOKEN)
     if not roh.strip():
         # Gelegentlich kommt gar nichts zurueck -- beim ersten grossen Lauf
-        # dreimal von 221, und derselbe Chat lieferte beim Nachstellen sauber
+        # in einzelnen Faellen, und derselbe Chat lieferte beim Nachstellen sauber
         # eine leere Liste. Also einmal nachfassen, statt den Chat als
         # fehlerhaft abzulegen und es eine Woche lang nicht mehr zu versuchen.
         roh = modell_fragen(system, frage, hoechstens=WISSEN_ANTWORT_TOKEN)
@@ -929,8 +928,8 @@ def prompt_bauen(nachrichten: list["Nachricht"], chat: str, profil: str,
     # ganzen Entwurf, waehrend die Beispiele nur die Form korrigieren.
     bekannt = wissen_lesen(chat, profil)
     if bekannt:
-        # Mit dem abgeleiteten Namen, wenn es einen gibt: "Was ueber Pascal
-        # Roth (+41 76 ...) bekannt ist" sagt dem Modell, an wen es schreibt.
+        # Mit dem abgeleiteten Namen, wenn es einen gibt: "Was ueber Alex
+        # Muster (+41 79 ...) bekannt ist" sagt dem Modell, an wen es schreibt.
         # Eine nackte Nummer sagt ihm gar nichts.
         teile.append(T(f"Was ueber {anzeige(chat)} bekannt ist:", f"What is known about {anzeige(chat)}:"))
         teile.extend(f"- [{z['bereich']}] {z['aussage']}" for z in bekannt)
@@ -1014,7 +1013,8 @@ async def start() -> None:
 
 @app.get("/gesundheit")
 def gesundheit() -> dict[str, str]:
-    """Offen, weil Nomad und der Tunnel hier ohne Anmeldung hinschauen muessen.
+    """Offen, weil Orchestrierung und Reverse-Proxy hier ohne Anmeldung
+    hinschauen muessen.
 
     Deshalb steht hier auch nichts drin, was jemandem nuetzt: kein Zaehler, kein
     Modellname. Eine Lebendpruefung ist keine Auskunftsstelle.
@@ -1358,7 +1358,7 @@ def einrichtung(anfrage: Request, hinweis: str = "") -> Response:
     """Fragt beim Betreten ab, was noch fehlt.
 
     Absicht: Der Dienst soll sich selbst in Betrieb nehmen lassen. Wer ihn
-    aufsetzt, soll nicht erst eine Nomad-Variable suchen muessen -- und wer
+    aufsetzt, soll nicht erst eine Umgebungsvariable suchen muessen -- und wer
     ihn spaeter uebernimmt, sieht auf einen Blick, was fehlt.
     """
     if not zugang.angemeldet(anfrage):
@@ -1475,7 +1475,7 @@ def esc_h(s: Any) -> str:
 # Hand ausloesen.
 
 AUTO_STANDARD = os.environ.get("WISSEN_AUTOMATISCH", "ja").lower() != "nein"
-# 15 Minuten und 10 Chats statt drei Stunden und 4 (22.09.2026, auf Wunsch).
+# 15 Minuten und 10 Chats statt drei Stunden und 4.
 #
 # Die alten Werte stammten aus einer Zeit, in der noch nichts ausgewertet war
 # und jede Runde etwas kostete. Inzwischen ist der Bestand durch: naechste_chats
@@ -1520,7 +1520,7 @@ def naechste_chats(profil: str, anzahl: int) -> list[str]:
     offen, alt = [], []
     for c in chats:
         name = (c.get("name") or "").strip()
-        # Gruppen sind seit dem 21.09.2026 dabei. Der frueher hier stehende
+        # Gruppen sind bewusst dabei. Der frueher hier stehende
         # Ausschluss stammte aus der Annahme, dort schrieben zu viele
         # durcheinander, als dass ueber eine einzelne Person etwas
         # Belastbares herauskaeme. Die Auswertungen des ersten grossen Laufs
@@ -1687,9 +1687,9 @@ def vortippen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
             #
             # letzte_von_mir aus /chats taugt nur als Vorfilter: das Feld
             # stammt aus chat.lastMessage, und das baut whatsapp-web.js aus
-            # lastReceivedKey. Am 21.09.2026 im Trockenlauf aufgefallen --
-            # ein Chat wurde als "Gegenseite zuletzt" ausgewaehlt, obwohl die
-            # letzten zwei Nachrichten von Stefan waren.
+            # lastReceivedKey. Im Trockenlauf aufgefallen -- ein Chat wurde
+            # als "Gegenseite zuletzt" ausgewaehlt, obwohl die letzten zwei
+            # Nachrichten die eigenen waren.
             #
             # Hier kostet die Pruefung nichts: die Nachrichten liegen schon
             # vor, und ein gesparter Modellaufruf ist ein gesparter
@@ -2082,7 +2082,7 @@ def chats_seite(anfrage: Request, archiv: int = 0) -> Response:
 
     # Kein Ausgangsbuch auf der Hauptseite.
     #
-    # Hier stand bis zum 22.09.2026 ein Block "Von hier gesendet" mit den
+    # Hier stand einmal ein Block "Von hier gesendet" mit den
     # letzten zehn Nachrichten. Gedacht war er als Nachweis: wer eine
     # Maschine in seinem Namen schreiben laesst, soll sehen, was sie gesagt
     # hat. Nur geht ohne einen Druck auf Senden nichts raus, und was raus
@@ -2698,7 +2698,7 @@ def chat_passt(c: dict, frage: str, karte: dict[str, str]) -> bool:
 
     Bei Nummern zaehlen nur Ziffern, damit +41 79, 0041 79 und 079 dasselbe
     finden. Die fuehrende 0 ist dabei die Verkehrsausscheidungsziffer: im
-    Chat steht 41794445566, getippt wird 079 444 55 66 -- ohne die 0 passt
+    Chat steht 41790000000, getippt wird 079 000 00 00 -- ohne die 0 passt
     der Rest als Teilstueck.
     """
     n = frage.strip().lower()
@@ -3539,7 +3539,7 @@ def rueckmeldung(r: Rueckmeldung) -> dict[str, str]:
     return {"status": "gespeichert"}
 
 
-# --- Verwaltung: fuer juro-noc ----------------------------------------------
+# --- Verwaltung: fuer ein Betriebswerkzeug ----------------------------------
 #
 # Diese Ebene ist fuer den Betrieb da, nicht fuer den Inhalt. Sie gibt Zahlen
 # heraus -- wie viele Entwuerfe, wie oft uebernommen, wann zuletzt etwas
@@ -3587,7 +3587,7 @@ def verwaltung_zustand() -> dict[str, Any]:
                       "letzte_taetigkeit": letzte},
         "profile": profile,
         "token": {"zugang": herkunft("zugang"), "verwaltung": herkunft("verwaltung")},
-        # Damit das NOC nicht nur sieht, dass der Dienst laeuft, sondern auch,
+        # Damit ein Betriebswerkzeug nicht nur sieht, dass der Dienst laeuft, sondern auch,
         # ob er arbeiten kann. Beides ohne einen Nachrichtentext.
         "verbindungen": {"whatsapp": whatsapp_probe(), "modell": modell_probe()},
         "laeuft_seit": START_ZEIT,
@@ -3601,7 +3601,7 @@ def verwaltung_token_erneuern(welcher: str, wunsch: TokenWunsch | None = None) -
 
     ``zugang``     wirft alle offenen Weboberflaechen-Sitzungen hinaus und legt
                    die Erweiterung still, bis der neue Wert dort eingetragen ist.
-    ``verwaltung`` betrifft nur juro-noc selbst.
+    ``verwaltung`` betrifft nur das Betriebswerkzeug selbst.
     """
     if welcher not in ("zugang", "verwaltung"):
         raise HTTPException(404, T("unbekannter Token; erlaubt sind zugang und verwaltung","unknown token; allowed are zugang and verwaltung"))

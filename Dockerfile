@@ -32,10 +32,10 @@ VOLUME ["/daten"]
 ENV ENTWURF_DB=/daten/entwuerfe.sqlite3
 
 EXPOSE 8099
-# Standardmaessig NUR auf der Schleife. Im Nomad-Auftrag teilt sich der
-# Container das Hostnetz mit dem cloudflared-Beiwagen; 0.0.0.0 haette bedeutet,
-# dass jeder im Mesh den Dienst direkt erreicht und Cloudflare Access
-# vorbeigeht. Fuer docker-compose (eigenes Netz je Container) setzt die
+# Standardmaessig NUR auf der Schleife. Teilt sich der Container das Hostnetz
+# mit einem Tunnel-Beiwagen, haette 0.0.0.0 bedeutet, dass jeder im selben Netz
+# den Dienst direkt erreicht und an einem vorgeschalteten Zugangsschutz
+# vorbeikommt. Fuer docker-compose (eigenes Netz je Container) setzt die
 # Compose-Datei BIND_ADRESSE=0.0.0.0.
 ENV BIND_ADRESSE=127.0.0.1
 CMD ["sh", "-c", "exec uvicorn app.main:app --host ${BIND_ADRESSE} --port 8099"]

@@ -1,8 +1,8 @@
 """Zugangsschutz fuer den Entwurfsdienst.
 
 Dieser Dienst zeigt Ausschnitte fremder WhatsApp-Nachrichten. Er darf deshalb
-nicht offen stehen -- auch nicht "nur intern", denn intern haengt er ueber
-Traefik an einem Namen, den jedes Geraet im Netz aufloesen kann.
+nicht offen stehen -- auch nicht "nur intern", denn intern haengt er hinter
+einem Reverse-Proxy an einem Namen, den jedes Geraet im Netz aufloesen kann.
 
 Es gibt **zwei** Geheimnisse mit verschiedenen Rechten:
 
@@ -13,14 +13,15 @@ Es gibt **zwei** Geheimnisse mit verschiedenen Rechten:
                          Token erneuern. Kommt an **keinen** Nachrichtentext
                          und an keinen Entwurf heran, auch nicht indirekt.
 
-Warum getrennt: Das NOC soll nach dem Dienst sehen und eingreifen koennen,
+Warum getrennt: Ein Betriebswerkzeug soll nach dem Dienst sehen und
+eingreifen koennen,
 ohne dabei mitzulesen. Ein einziges Geheimnis fuer beides waere bequem und
 genau deshalb falsch -- wer den Zustand abfragen darf, haette dann auch den
 Chatverlauf.
 
 Warum der Dienst die Cloudflare-Access-Kennung NICHT selbst prueft: von aussen
-kommt man ueber den Tunnel, und davor steht Access. Von innen kommt man ueber
-Traefik, und dort gibt es kein Access-Merkmal. Wuerde der Dienst eines
+kommt man ueber den Tunnel, und davor steht Access. Von innen kommt man
+direkt bzw. ueber einen Reverse-Proxy, und dort gibt es kein Access-Merkmal. Wuerde der Dienst eines
 verlangen, waere der innere Weg tot; wuerde er einem Kopffeld glauben, waere
 der Schutz wertlos, weil Kopffelder faelschbar sind. Access sichert also die
 Aussenkante, dieses Modul sichert den Dienst selbst -- unabhaengig voneinander.
@@ -132,8 +133,8 @@ def einstellung_schreiben(name: str, wert: str) -> None:
 def gesetzt(wert: str) -> bool:
     """Ist das ein echter Wert -- oder nur ein sichtbarer Platzhalter?
 
-    Nomad verwirft leere Werte, deshalb tragen unfertige Eintraege in der
-    Nomad-Variablen ein `BITTE-SETZEN-...`. Ohne diese Pruefung meldete der
+    Manche Konfigurationsquellen verwerfen leere Werte, deshalb tragen
+    unfertige Eintraege ein `BITTE-SETZEN-...`. Ohne diese Pruefung meldete der
     Zustand `schluessel_gesetzt: true`, obwohl jeder Entwurf scheitern musste.
     """
     w = (wert or "").strip()
@@ -328,7 +329,7 @@ def verwaltung_zugang(anfrage: Request) -> None:
     """Betriebsebene: NUR VERWALTUNG_TOKEN.
 
     Der Zugangstoken wird hier bewusst **nicht** akzeptiert. Die Trennung soll
-    in beide Richtungen gelten: das NOC sieht keine Nachrichten, und der
+    in beide Richtungen gelten: das Betriebswerkzeug sieht keine Nachrichten, und der
     Browser-Token darf nicht am Betrieb drehen.
     """
     if not VERWALTUNG_START and not verwaltung_token():
@@ -370,7 +371,7 @@ def keks_setzen(antwort, sicher: bool) -> None:
 def ueber_tls(anfrage: Request) -> bool:
     """Kam die Anfrage ueber HTTPS?
 
-    Der Dienst selbst spricht HTTP; TLS endet bei Traefik bzw. am Tunnel.
+    Der Dienst selbst spricht HTTP; TLS endet am Reverse-Proxy bzw. am Tunnel.
     Deshalb zaehlt das weitergereichte Kopffeld. Das ist faelschbar -- es
     entscheidet hier aber nur ueber das ``Secure``-Merkmal des Keks, nicht
     ueber den Zugang.

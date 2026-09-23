@@ -13,7 +13,7 @@
  * WhatsApps Entwurfsfunktion arbeitet nicht mit Begleitgeraeten, Entwuerfe
  * werden zwischen Telefon, Web und Desktop nicht abgeglichen.
  *
- * Am 22.09.2026 bis zum Ende durchgemessen, in drei Anlaeufen:
+ * Bis zum Ende durchgemessen, in drei Anlaeufen:
  *
  *   1. ins sichtbare Eingabefeld tippen -- in einer kopfgesteuerten Sitzung
  *      wird kein Chat aktiv, das Feld gehoert irgendeinem anderen. Der
@@ -48,8 +48,8 @@ const DATEN = process.env.KOPPLER_DATEN || '/daten/koppler';
 // App-Container ihn erreicht -- der Token schuetzt ihn, nicht die Adresse.
 const BIND = process.env.KOPPLER_BIND || '127.0.0.1';
 
-// Wie viele Chats /chats hoechstens zurueckgibt. Standen fest auf 100, und
-// genau 100 kamen am 21.09.2026 zurueck -- bei einer harten Grenze heisst das
+// Wie viele Chats /chats hoechstens zurueckgibt. Stand fest auf 100, und
+// genau 100 kamen zurueck -- bei einer harten Grenze heisst das
 // meist, dass hinten etwas fehlt. Die Antwort nennt seither die Gesamtzahl in
 // der Kopfzeile X-Chats-Gesamt, damit sich das nachsehen laesst.
 const CHAT_GRENZE = Number(process.env.KOPPLER_CHAT_GRENZE || 300);
@@ -173,7 +173,7 @@ client.initialize().catch((e) => {
 //
 // Der Grund, warum es diese Pruefung braucht: chat.name ist bei unbekannten
 // Nummern NICHT leer. WhatsApp setzt dort die formatierte Nummer ein, etwa
-// "+41 77 521 02 41". Wer nur auf einen leeren Namen prueft, hoert genau
+// "+41 79 000 00 00". Wer nur auf einen leeren Namen prueft, hoert genau
 // dort auf zu suchen, wo es interessant wird.
 function nurNummer(s) {
   return /^\+?[\d\s/().-]{6,}$/.test((s || '').trim());
@@ -189,8 +189,8 @@ async function anzeigename(chat) {
       // Reihenfolge: jeder Name schlaegt die Nummer.
       //
       // Hier stand die Nummer zuerst, und contact.name wurde ueberhaupt nicht
-      // abgefragt -- ein Fehler, der am 21.09.2026 so aussah, als koenne
-      // WhatsApp die Telefonbuchkontakte nicht liefern. Kann es doch: was das
+      // abgefragt -- ein Fehler, der so aussah, als koenne WhatsApp die
+      // Telefonbuchkontakte nicht liefern. Kann es doch: was das
       // gekoppelte Telefon synchronisiert hat, steht in contact.name. Dass
       // chat.name leer ist, heisst seit der LID-Umstellung nicht mehr, dass
       // kein Adressbucheintrag existiert.
@@ -203,12 +203,12 @@ async function anzeigename(chat) {
         if (t) return t;
       }
       // contact.number NICHT vor chat.name: bei LID-Kontakten liefert es die
-      // LID, nicht die Telefonnummer. Am 21.09.2026 gemessen --
+      // LID, nicht die Telefonnummer. Gemessen --
       //
-      //   chat_name '+41 77 521 02 41'   contact.number 57076256624815
+      //   chat_name '+41 79 000 00 00'   contact.number 123456789012345
       //
       // -- und genau dieser Griff hat die Anzeige kurzzeitig von lesbaren
-      // Nummern auf "+2023063838786" umgestellt.
+      // Nummern auf eine nackte LID umgestellt.
       if (name) return name;
 
       const nummer = (k?.number || '').trim();
@@ -232,11 +232,11 @@ async function anzeigename(chat) {
 // wird am Chatmodell gesetzt, nicht in der Oberflaeche.
 //
 // Der Weg ueber das Eingabefeld war ein Irrweg, und zwar ein gefaehrlicher.
-// Am 22.09.2026 gemessen (/diagnose auf Paola Meixueiro):
+// An einem Chat gemessen (ueber /diagnose):
 //
 //   VOR dem Oeffnen:  aktiver Chat None, Feld None
-//   nach 200 ms:      aktiv=None, Feld='Du bist unmoeglich'
-//   nach 7700 ms:     aktiv=None, Feld='Du bist unmoeglich'
+//   nach 200 ms:      aktiv=None, Feld=<Text eines FREMDEN Chats>
+//   nach 7700 ms:     aktiv=None, Feld=<derselbe fremde Text>
 //
 // Der gewuenschte Chat wird nie aktiv, und das sichtbare Feld gehoert einem
 // anderen. Laenger warten half nicht -- der Wert stand schon bei der ersten
@@ -258,7 +258,7 @@ async function entwurfAmModell(chatId, text, nurWennLeer) {
       return { ok: false, grund: 'Feld nicht leer -- nichts angetastet',
                vorhanden };
     }
-    // Das Modell zu setzen genuegt NICHT. Am 22.09.2026 gemessen: der Wert
+    // Das Modell zu setzen genuegt NICHT. Gemessen: der Wert
     // stand danach im Modell und liess sich zurueckzulesen, auf dem Telefon
     // kam aber nichts an. Es aendert nur den Speicher, nicht den Zustand.
     //
@@ -411,7 +411,7 @@ const server = http.createServer(async (req, res) => {
     // Diagnose: WELCHER Chat ist nach dem Oeffnen tatsaechlich aktiv, und
     // was steht in seinem Eingabefeld?
     //
-    // Anlass am 22.09.2026: der Koppler meldete "Feld nicht leer" fuer einen
+    // Anlass: der Koppler meldete "Feld nicht leer" fuer einen
     // Chat, in dem nachweislich nichts stand. Dann las er das Feld eines
     // anderen -- und haette bei leerem Feld auch dorthin geschrieben. Ein
     // Entwurf im falschen Chat ist schlimmer als gar keiner.
@@ -456,7 +456,7 @@ const server = http.createServer(async (req, res) => {
 
     // Diagnose: welche Module und Funktionen gibt es zum Thema Entwurf?
     //
-    // Am 22.09.2026: chat.draftMessage laesst sich setzen und zurueckzulesen,
+    // chat.draftMessage laesst sich setzen und zurueckzulesen,
     // auf dem Telefon kommt aber nichts an. Das Setzen allein loest also
     // keine Speicherung aus -- es braucht die Aktion, die WhatsApp selbst
     // dafuer benutzt. window.require ist WhatsApps eigenes, nicht das der
@@ -499,11 +499,11 @@ const server = http.createServer(async (req, res) => {
       // von: wer die Nachricht geschrieben hat. In Gruppen steht das in
       // author, im Einzelchat in from. Ohne dieses Feld laesst sich eine
       // Aussage aus einer Gruppe nur ueber den NAMEN einer Person zuordnen
-      // -- und zwei Oliver in zwei Gruppen verschmelzen dabei.
+      // -- und zwei gleichnamige Personen in zwei Gruppen verschmelzen dabei.
       // typ und hat_medien: ohne sie sieht eine Sprachnachricht genauso aus
       // wie eine leere Zeile. Der Dienst ueberspringt alles ohne Text, und
-      // 15 Chats meldeten deshalb "nur Nachrichten ohne Text" -- dort wurde
-      // gesprochen statt geschrieben. Erst mit dem Typ laesst sich sagen,
+      // etliche Chats meldeten deshalb "nur Nachrichten ohne Text" -- dort
+      // wurde gesprochen statt geschrieben. Erst mit dem Typ laesst sich sagen,
       // wie gross diese Luecke ueberhaupt ist.
       return antwort(res, 200, n.map((m) => ({
         // id: ohne sie laesst sich eine einzelne Nachricht spaeter nicht
@@ -594,7 +594,7 @@ const server = http.createServer(async (req, res) => {
 
     // Senden. Der einzige Endpunkt, der etwas nach draussen schickt.
     //
-    // Bis zum 22.09.2026 gab es ihn bewusst nicht: Lesen und Entwerfen sieht
+    // Zuerst gab es ihn bewusst nicht: Lesen und Entwerfen sieht
     // von aussen aus wie ein gekoppeltes Geraet, Senden ueber einen
     // Fremdclient ist das, wofuer Nummern gesperrt werden. Er kam erst dazu,
     // als klar war, dass Entwuerfe das Telefon nicht erreichen und der Dienst
