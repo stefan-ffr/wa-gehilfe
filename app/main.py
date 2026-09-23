@@ -1155,13 +1155,13 @@ def lampen(erzwingen: bool = False) -> str:
 def anmeldeseite(hinweis: str = "") -> HTMLResponse:
     # Bewusst 401 statt 200: ein Suchdienst oder Skript soll die Anmeldemaske
     # nicht fuer die Seite selbst halten.
-    return HTMLResponse(f"""{kopf("Anmeldung")}
-<h1 class="text-xl font-semibold mb-3">Anmeldung</h1>
-<p>Diese Seite zeigt Nachrichtenausschnitte. Zugang nur mit Token.</p>
+    return HTMLResponse(f"""{kopf(T("Anmeldung","Sign in"))}
+<h1 class="text-xl font-semibold mb-3">{T("Anmeldung","Sign in")}</h1>
+<p>{T("Diese Seite zeigt Nachrichtenausschnitte. Zugang nur mit Token.","This page shows message excerpts. Access with a token only.")}</p>
 <form method="post" action="/anmeldung">
  <input type="password" name="token" autocomplete="current-password" autofocus
-        placeholder="Zugangstoken">
- <button type="submit">Anmelden</button>
+        placeholder="{T('Zugangstoken','Access token')}">
+ <button type="submit">{T("Anmelden","Sign in")}</button>
 </form>
 <p class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{hinweis}</p>{fuss()}""", status_code=401)
 
@@ -1169,10 +1169,10 @@ def anmeldeseite(hinweis: str = "") -> HTMLResponse:
 @app.post("/anmeldung")
 def anmelden(anfrage: Request, token: str = Form("")) -> Response:
     if zugang.gesperrt(anfrage):
-        return anmeldeseite("Zu viele Fehlversuche. In fuenf Minuten erneut versuchen.")
+        return anmeldeseite(T("Zu viele Fehlversuche. In fuenf Minuten erneut versuchen.","Too many failed attempts. Try again in five minutes."))
     if not zugang.token_stimmt(token):
         zugang.fehlversuch(anfrage)
-        return anmeldeseite("Token stimmt nicht.")
+        return anmeldeseite(T("Token stimmt nicht.","Wrong token."))
     zugang.versuche_loeschen(anfrage)
     antwort = RedirectResponse("/", status_code=303)
     zugang.keks_setzen(antwort, sicher=zugang.ueber_tls(anfrage))
@@ -1327,7 +1327,7 @@ def einrichtung(anfrage: Request, hinweis: str = "") -> Response:
         "<p>Noch kein Schluessel hinterlegt. Ohne ihn kann kein Entwurf "
         "entstehen.</p>")
 
-    return HTMLResponse(f"""{kopf("Einrichtung", zurueck="/einstellungen", aktiv="/einstellungen")}
+    return HTMLResponse(f"""{kopf(T("Einrichtung","Setup"), zurueck="/einstellungen", aktiv="/einstellungen")}
 <h1>Einrichtung</h1>
 <p class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{esc_h(hinweis)}</p>
 
@@ -1406,7 +1406,7 @@ def einrichtung_speichern(anfrage: Request,
 def koppeln(anfrage: Request) -> Response:
     if not zugang.angemeldet(anfrage):
         return anmeldeseite()
-    return HTMLResponse(f"""{kopf("WhatsApp verbinden", zurueck="/einstellungen", aktiv="/einstellungen")}
+    return HTMLResponse(f"""{kopf(T("WhatsApp verbinden","Connect WhatsApp"), zurueck="/einstellungen", aktiv="/einstellungen")}
 <p><a href="/">&larr; Uebersicht</a></p>
 <h1>WhatsApp verbinden</h1>
 {koppel_abschnitt()}
@@ -1985,13 +1985,12 @@ def chats_seite(anfrage: Request, archiv: int = 0) -> Response:
 
     chats = koppler("/chats") if koppler_da() else None
     if not isinstance(chats, list):
-        return HTMLResponse(kopf("Chats", aktiv="/") + """
+        return HTMLResponse(kopf(T("Chats","Chats"), aktiv="/") + f"""
 <div class="rounded-xl border border-amber-300 bg-amber-50 p-4">
- <p class="font-medium">Keine gekoppelte Sitzung.</p>
- <p class="text-sm text-slate-600 mt-1">Ohne sie gibt es keine Chats zu
- zeigen.</p>
+ <p class="font-medium">{T("Keine gekoppelte Sitzung.","No linked session.")}</p>
+ <p class="text-sm text-slate-600 mt-1">{T("Ohne sie gibt es keine Chats zu zeigen.","Without one there are no chats to show.")}</p>
  <a href="/koppeln" class="inline-block mt-3 px-4 py-2 rounded-lg
-    bg-slate-900 text-white text-sm font-medium">Jetzt verbinden</a>
+    bg-slate-900 text-white text-sm font-medium">{T("Jetzt verbinden","Connect now")}</a>
 </div>""" + fuss())
 
     karte = namen_karte()
@@ -2010,14 +2009,14 @@ def chats_seite(anfrage: Request, archiv: int = 0) -> Response:
         kennzeichen = (f'<span class="ml-2 shrink-0 rounded-full bg-emerald-600 '
                        f'text-white text-xs font-semibold px-2 py-0.5">{u}</span>'
                        if u else "")
-        gruppe = ('<span class="ml-2 shrink-0 rounded-md bg-slate-100 '
-                  'text-slate-600 text-xs px-1.5 py-0.5">Gruppe</span>'
+        gruppe = (f'<span class="ml-2 shrink-0 rounded-md bg-slate-100 '
+                  f'text-slate-600 text-xs px-1.5 py-0.5">{T("Gruppe","Group")}</span>'
                   if c.get("gruppe") else "")
         wartet = c.get("letzte_von_mir") is False
         # Ein Punkt statt eines Worts: "wartet auf Antwort" in jeder Zeile
         # waere Laerm, aber genau das will man auf einen Blick sehen.
-        punkt = ('<span class="shrink-0 w-2 h-2 rounded-full bg-emerald-500"'
-                 ' title="wartet auf deine Antwort"></span>' if wartet
+        punkt = (f'<span class="shrink-0 w-2 h-2 rounded-full bg-emerald-500"'
+                 f' title="{T("wartet auf deine Antwort","waiting for your reply")}"></span>' if wartet
                  else '<span class="shrink-0 w-2 h-2"></span>')
         # loading="lazy": nur was sichtbar wird, wird geholt. Bei 120 Chats
         # waeren es sonst 120 Aufrufe in die WhatsApp-Seite hinein, jedes Mal.
@@ -2042,7 +2041,7 @@ def chats_seite(anfrage: Request, archiv: int = 0) -> Response:
   <input type="hidden" name="id" value="{esc_h(c.get('id') or '')}">
   <input type="hidden" name="zurueck" value="{'ja' if archiv else ''}">
   <button class="text-[11px] text-slate-400 hover:text-slate-700"
-     >{'zurueckholen' if archiv else 'archivieren'}</button>
+     >{T("zurueckholen","unarchive") if archiv else T("archivieren","archive")}</button>
  </form></li>""")
 
     # Kein Ausgangsbuch auf der Hauptseite.
@@ -2060,24 +2059,25 @@ def chats_seite(anfrage: Request, archiv: int = 0) -> Response:
 
     offen = sum(1 for c in chats
                 if not c.get("gruppe") and c.get("letzte_von_mir") is False)
-    hinweis = (f'<p class="text-sm text-slate-600 mb-3">{offen} Chats warten '
-               f'auf eine Antwort.</p>' if offen else "")
+    hinweis = (f'<p class="text-sm text-slate-600 mb-3">{offen} '
+               + T("Chats warten auf eine Antwort.","chats awaiting a reply.")
+               + '</p>' if offen else "")
 
     kopfzeile = f"""<form method="get" action="/suche" class="mb-3">
- <input name="q" placeholder="Chat oder Nachricht suchen&hellip;"
+ <input name="q" placeholder="{T('Chat oder Nachricht suchen','Search chat or message')}&hellip;"
     class="w-full rounded-lg border border-slate-300 px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-slate-400">
 </form>
 <p class="text-sm mb-3">
  <a class="underline text-slate-600" href="/{'' if archiv else '?archiv=1'}"
-   >{'zu den aktiven Chats' if archiv else f'Archiv ({anzahl_archiv})'}</a>
+   >{T("zu den aktiven Chats","back to active chats") if archiv else f'{T("Archiv","Archive")} ({anzahl_archiv})'}</a>
 </p>"""
 
-    return HTMLResponse(kopf("Archiv" if archiv else "Chats", aktiv="/")
+    return HTMLResponse(kopf(T("Archiv","Archive") if archiv else T("Chats","Chats"), aktiv="/")
                         + kopfzeile + hinweis + f"""
 <ul class="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100
            overflow-hidden">{''.join(zeilen) or
- '<li class="p-4 text-slate-500">Keine Chats.</li>'}</ul>"""
+ f'<li class="p-4 text-slate-500">{T("Keine Chats.","No chats.")}</li>'}</ul>"""
                         + fuss(aktualisieren=20))
 
 
@@ -2095,7 +2095,7 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
     if not zugang.angemeldet(anfrage):
         return anmeldeseite()
     if not koppler_da():
-        return HTMLResponse(kopf("Gespraech", zurueck="/") +
+        return HTMLResponse(kopf(T("Gespraech","Conversation"), zurueck="/") +
                             '<p class="text-red-700">Kein Koppler.</p>' + fuss())
 
     roh = koppler(f"/nachrichten?chat={urllib.parse.quote(id)}&anzahl={anzahl}")
@@ -2715,7 +2715,7 @@ def suche(anfrage: Request, q: str = "", chat: str = "") -> Response:
 </form>"""
 
     if not q.strip():
-        return HTMLResponse(kopf("Suche", zurueck="/") + formular + fuss())
+        return HTMLResponse(kopf(T("Suche","Search"), zurueck="/") + formular + fuss())
 
     karte = namen_karte()
     chats = koppler("/chats")
@@ -2786,7 +2786,7 @@ def suche(anfrage: Request, q: str = "", chat: str = "") -> Response:
             '<p class="text-sm text-slate-600 mb-3">Kein Chat und keine '
             'Nachricht dazu gefunden.</p>')
 
-    return HTMLResponse(kopf(f"Suche: {q}", zurueck="/") + formular
+    return HTMLResponse(kopf(f'{T("Suche","Search")}: {q}', zurueck="/") + formular
                         + leer + chat_html + nachrichten_html + fuss())
 
 
@@ -3157,7 +3157,7 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
  Dafuer wird die gekoppelte Sitzung gebraucht &mdash; nur sie sieht mehr als
  den offenen Ausschnitt. <a class="underline" href="/koppeln">Verbinden</a></p>""")
 
-    return HTMLResponse(kopf("Wissen", aktiv="/wissen") + f"""
+    return HTMLResponse(kopf(T("Wissen","Knowledge"), aktiv="/wissen") + f"""
 <p class="text-sm text-slate-600 mb-4">Abgeleitet aus dem Verlauf und beim
 Entwerfen mitverwendet. Was nicht stimmt, streichst du einzeln.</p>
 
@@ -3375,7 +3375,7 @@ def oberflaeche(anfrage: Request, trotzdem: int = 0, pruefen: int = 0) -> Respon
                 f'<span class="text-slate-500">{beschriftung}</span>'
                 f'<span class="font-medium">{esc(wert)}</span></span>')
 
-    return HTMLResponse(kopf("Einstellungen", aktiv="/einstellungen") + f"""
+    return HTMLResponse(kopf(T("Einstellungen","Settings"), aktiv="/einstellungen") + f"""
 {lampen_html}
 
 <div class="flex flex-wrap gap-2 mb-4">
