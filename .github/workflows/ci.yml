@@ -1,0 +1,102 @@
+name: CI
+
+# Erst pruefen, dann bauen. Ein Abbild, dessen Tests nicht gelaufen sind,
+# hat auf :latest nichts verloren -- deshalb haengt der Bau am Test.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Beide Sprachen als eigener Lauf: i18n liest die Umgebung EINMAL
+        # beim Import. In einem Prozess liesse sich die Sprache nicht mehr
+        # umschalten, und der Test wuerde nur eine Haelfte pruefen.
+        sprache: [de, en]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Abhaengigkeiten
+        run: |
+          python -m pip install --quiet --upgrade pip
+          # Ohne faster-whisper: das zieht Torch-Gewicht nach und wird in den
+          # Tests nur verzoegert importiert. Die Testliste selbst reicht.
+          python -m pip install --quiet fastapi==0.115.6 pydantic==2.10.4 \
+            python-multipart==0.0.20 "PyJWT[crypto]==2.10.1" qrcode==8.0 \
+            pytest==8.3.4 httpx==0.28.1
+
+      - name: Tests
+        env:
+          SPRACHE: ${{ matrix.sprache }}
+          ZUGANG_TOKEN: testtoken-ohne-belang-aaaaaa
+          VERWALTUNG_TOKEN: testtoken-ohne-belang-bbbbbb
+        run: python -m pytest tests -q
+
+  koppler-syntax:
+    # Der Koppler hat keine Testsuite -- er spricht mit einer echten
+    # WhatsApp-Sitzung, die sich nicht nachstellen laesst. Was sich ohne
+    # Sitzung pruefen laesst, wird geprueft: dass die Datei gueltig ist.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax der Koppler- und Erweiterungsdateien
+        run: |
+          set -eu
+          for f in koppler/server.js erweiterung/*.js; do
+            node --check "$f"
+            echo "ok  $f"
+          done
+
+  build:
+    needs: [test, koppler-syntax]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: wa-gehilfe
+            context: .
+          - name: wa-gehilfe-koppler
+            context: ./koppler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache,mode=max

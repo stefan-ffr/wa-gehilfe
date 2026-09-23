@@ -77,6 +77,18 @@ In jedem Fall ist der Server-Haken (`BENACHRICHTIGUNG_URL`) die gemeinsame
 Grundlage -- ob der Empfänger die ntfy-App, ein eingebauter Android-Empfänger
 oder später etwas anderes ist.
 
+## Mitmachen
+
+```bash
+python -m pip install -r requirements-test.txt
+SPRACHE=de pytest tests -q
+SPRACHE=en pytest tests -q      # zweiter Lauf: die Sprache steht beim Import fest
+```
+
+Die CI fährt beide Sprachen, prüft die Syntax von Koppler und Erweiterung und
+baut die Abbilder erst danach. Ein Tag `v*` löst zusätzlich einen Release aus
+(versionierte Abbilder plus Notiz aus den Commits).
+
 ## Lizenz
 
 [AGPL-3.0](LICENSE). Wer wa-gehilfe als Netzwerkdienst betreibt, muss den
