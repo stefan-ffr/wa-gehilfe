@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Laufzeit / Daten -- niemals ins Repo
+/daten/
+*.sqlite3
+.env
+.env.local
+
+# Baustil (wird im Image erzeugt)
+app/static/app.css
+
+# Betriebssystem / Editor
+.DS_Store
+*.swp

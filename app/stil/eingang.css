@@ -1,0 +1,22 @@
+/* Eingang fuer Tailwind.
+ *
+ * Gebaut wird beim Erstellen des Abbilds, nicht im Browser. Das CDN von
+ * Tailwind waere ein Skript von einem fremden Server auf jeder Seite --
+ * genau die Abhaengigkeit, die hier sonst ueberall vermieden wird. So liegt
+ * am Ende eine einzige fertige CSS-Datei im Abbild, und der Dienst laeuft
+ * auch ohne Internet.
+ *
+ * @source zeigt auf main.py: die Klassennamen stehen in den f-Strings des
+ * Dienstes, nicht in HTML-Dateien. Ohne diese Zeile faende Tailwind keine
+ * einzige und liefere ein leeres Stylesheet aus.
+ */
+@import "tailwindcss";
+
+@source "../main.py";
+
+/* Eigene Farbtoene, damit die eigene Nachricht wie in WhatsApp gruenlich
+ * bleibt -- daran ist das Auge gewoehnt, und es spart eine Beschriftung. */
+@theme {
+  --color-eigen: oklch(0.93 0.06 145);
+  --color-eigen-rand: oklch(0.85 0.09 145);
+}

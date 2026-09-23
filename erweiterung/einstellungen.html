@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8">
+<title>WhatsApp-Entwurfshilfe</title>
+<style>
+ body{font:14px system-ui,sans-serif;margin:1.5rem;max-width:34rem;color:#1f2328}
+ label{display:block;margin:1rem 0 .3rem;font-weight:600}
+ input{width:100%;padding:.45rem;border:1px solid #d0d7de;border-radius:6px;font:inherit}
+ button{margin-top:1.2rem;padding:.5rem 1rem;border:1px solid #d0d7de;border-radius:6px;
+        background:#f6f8fa;font:inherit;cursor:pointer}
+ p.h{color:#57606a}
+ details{margin-top:1.4rem;border-top:1px solid #d0d7de;padding-top:1rem}
+ summary{cursor:pointer;font-weight:600}
+</style>
+<h1>Einstellungen</h1>
+
+<label for="dienst">Adresse des Entwurfsdienstes</label>
+<input id="dienst" placeholder="https://whatsapp-stefan.juroct.net">
+<p class="h">Der Dienst haelt den API-Schluessel und das Gedaechtnis &mdash; nicht der Browser.</p>
+
+<label for="token">Zugangstoken</label>
+<input id="token" type="password" autocomplete="off" placeholder="ZUGANG_TOKEN des Dienstes">
+<p class="h">Derselbe Token wie in <code>ZUGANG_TOKEN</code>. Ohne ihn antwortet der Dienst
+mit 401. Er liegt im Hintergrunddienst der Erweiterung, nicht in der WhatsApp-Seite.</p>
+
+<label for="profil">Profil</label>
+<input id="profil" placeholder="stefan">
+<p class="h">Trennt mehrere Instanzen: jedes Profil lernt fuer sich.</p>
+
+<details>
+ <summary>Zugriff von aussen (Cloudflare Access)</summary>
+ <p class="h">Nur noetig, wenn die Adresse oben ueber den Cloudflare-Tunnel geht.
+ Access wuerde eine Anmeldemaske schicken, mit der die Erweiterung nichts anfangen kann;
+ ein <em>Dienst-Token</em> kommt ohne Maske durch. Im eigenen Netz bleiben beide Felder leer.</p>
+ <label for="cfKennung">CF-Access-Client-Id</label>
+ <input id="cfKennung" autocomplete="off" placeholder="....access">
+ <label for="cfGeheimnis">CF-Access-Client-Secret</label>
+ <input id="cfGeheimnis" type="password" autocomplete="off">
+</details>
+
+<button id="speichern">Speichern</button>
+<p id="status" class="h"></p>
+
+<script src="einstellungen.js"></script>

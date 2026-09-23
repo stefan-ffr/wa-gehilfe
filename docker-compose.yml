@@ -1,0 +1,81 @@
+# wa-gehilfe -- eigenstaendiger Betrieb mit docker compose.
+#
+# Zwei Container: der Dienst (Weboberflaeche + KI) und der Koppler (haelt die
+# WhatsApp-Web-Sitzung ueber whatsapp-web.js). Sie reden ueber ein internes
+# Netz; der Koppler wird NICHT nach aussen veroeffentlicht -- nur der Dienst
+# erreicht ihn, geschuetzt durch KOPPLER_TOKEN.
+#
+# Vorbereitung:
+#   cp .env.beispiel .env   und die Werte darin setzen
+#   docker compose up -d --build
+# Danach die Weboberflaeche oeffnen, mit ZUGANG_TOKEN anmelden, unter "Mehr"
+# den WhatsApp-QR-Code scannen.
+
+services:
+  dienst:
+    build: .
+    image: wa-gehilfe:lokal
+    restart: unless-stopped
+    ports:
+      # Nur auf der Schleife des Hosts. Von aussen erreichbar machst du es
+      # ueber einen Reverse-Proxy oder einen Tunnel (Beispiel unten), nicht
+      # ueber einen offenen Port.
+      - "127.0.0.1:${HOST_PORT:-8099}:8099"
+    environment:
+      SPRACHE: "${SPRACHE:-de}"
+      EIGENER_NAME: "${EIGENER_NAME:-Ich}"
+      MODELL_ANBIETER: "${MODELL_ANBIETER:-claude}"
+      MODELL: "${MODELL:-claude-sonnet-5}"
+      MODELL_API_SCHLUESSEL: "${MODELL_API_SCHLUESSEL:?bitte in .env setzen}"
+      # Ohne diesen Token startet der Dienst nicht (openssl rand -base64 32).
+      ZUGANG_TOKEN: "${ZUGANG_TOKEN:?bitte in .env setzen}"
+      VERWALTUNG_TOKEN: "${VERWALTUNG_TOKEN:-}"
+      # Eigenes Netz je Container -> auf allen Adressen lauschen; nach aussen
+      # schuetzt die Bindung der Portfreigabe an 127.0.0.1 oben.
+      BIND_ADRESSE: "0.0.0.0"
+      KOPPLER_URL: "http://koppler:8098"
+      KOPPLER_TOKEN: "${KOPPLER_TOKEN:?bitte in .env setzen}"
+      # Sprachnachrichten transkribieren (faster-whisper). Groesse: tiny|base|small.
+      WHISPER_MODELL: "${WHISPER_MODELL:-base}"
+      WHISPER_SPRACHE: "${WHISPER_SPRACHE:-}"
+      KALENDER_DOMAIN: "${KALENDER_DOMAIN:-wa-gehilfe.local}"
+      TZ: "${TZ:-Europe/Zurich}"
+      # Nur falls Cloudflare Access davorsteht -- sonst leer lassen.
+      CF_ACCESS_TEAM: "${CF_ACCESS_TEAM:-}"
+      CF_ACCESS_AUD: "${CF_ACCESS_AUD:-}"
+    volumes:
+      - ./daten/dienst:/daten
+    depends_on:
+      - koppler
+    networks: [intern]
+
+  koppler:
+    build: ./koppler
+    image: wa-gehilfe-koppler:lokal
+    restart: unless-stopped
+    environment:
+      # Im internen Netz erreichbar fuer den Dienst; nicht nach aussen
+      # veroeffentlicht. Der Token ist der Schutz, nicht die Adresse.
+      KOPPLER_BIND: "0.0.0.0"
+      KOPPLER_TOKEN: "${KOPPLER_TOKEN:?bitte in .env setzen}"
+      KOPPLER_CHAT_GRENZE: "${KOPPLER_CHAT_GRENZE:-300}"
+      TZ: "${TZ:-Europe/Zurich}"
+    volumes:
+      - ./daten/koppler:/daten
+    networks: [intern]
+
+  # Optional: oeffentlich erreichbar ueber einen Cloudflare-Tunnel, ohne am
+  # Standort einen Port zu oeffnen. Token aus Cloudflare Zero Trust. Auskommentiert
+  # lassen, wenn du einen eigenen Reverse-Proxy nutzt.
+  #
+  # tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: ["tunnel", "--no-autoupdate", "run"]
+  #   environment:
+  #     TUNNEL_TOKEN: "${TUNNEL_TOKEN:?Tunnel-Token aus Cloudflare Zero Trust}"
+  #   depends_on: [dienst]
+  #   networks: [intern]
+
+networks:
+  intern:
