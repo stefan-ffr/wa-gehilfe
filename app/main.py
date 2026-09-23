@@ -1127,7 +1127,7 @@ def lampen(erzwingen: bool = False) -> str:
     mstufe = "gut" if m.get("ok") else (
         "aus" if "kein Schluessel" in m.get("text", "") else "schlecht")
     alter = m.get("zeit") and time.time() - m["zeit"]
-    wann = f"vor {int(alter)} s geprueft" if alter and alter > 2 else "gerade geprueft"
+    wann = (T(f"vor {int(alter)} s geprueft", f"checked {int(alter)} s ago") if alter and alter > 2 else T("gerade geprueft","just checked"))
 
     farbe = {"gut": "bg-emerald-500", "wartet": "bg-amber-500",
              "schlecht": "bg-red-500", "aus": "bg-slate-300"}
@@ -3341,18 +3341,20 @@ def oberflaeche(anfrage: Request, trotzdem: int = 0, pruefen: int = 0) -> Respon
                            ORDER BY zuletzt DESC LIMIT 1""").fetchone()
         vt_n = v.execute("SELECT COUNT(*) AS n FROM entwurf_lauf").fetchone()["n"]
     if vortippen_an():
-        letzte_vt = (f"zuletzt {time.strftime('%d.%m. %H:%M', time.localtime(vt['zuletzt']))} "
-                     f"fuer {esc(anzeige(vt['chat'], karte))} &mdash; {esc(vt['ergebnis'])}"
-                     if vt else "noch nichts vorgetippt")
+        _vt_zeit = time.strftime('%d.%m. %H:%M', time.localtime(vt['zuletzt'])) if vt else ""
+        letzte_vt = (T(f"zuletzt {_vt_zeit} fuer {esc(anzeige(vt['chat'], karte))} &mdash; {esc(vt['ergebnis'])}",
+                       f"last {_vt_zeit} for {esc(anzeige(vt['chat'], karte))} &mdash; {esc(vt['ergebnis'])}")
+                     if vt else T("noch nichts vorgetippt","nothing pre-typed yet"))
         vortippen_text = (
-            f"An &mdash; alle {takt(VORTIPPEN_INTERVALL)} bis zu "
-            f"{VORTIPPEN_JE_RUNDE} Chats, {vt_n} bisher bedient. {letzte_vt}.<br>"
-            "<small>Nur Einzelchats, in denen die Gegenseite zuletzt geschrieben "
-            "hat. Ein Feld, in dem schon etwas steht, wird nicht angetastet. "
-            "Gesendet wird nichts.</small>")
+            T(f"An &mdash; alle {takt(VORTIPPEN_INTERVALL)} bis zu {VORTIPPEN_JE_RUNDE} Chats, {vt_n} bisher bedient. {letzte_vt}.",
+              f"On &mdash; every {takt(VORTIPPEN_INTERVALL)}, up to {VORTIPPEN_JE_RUNDE} chats, {vt_n} handled so far. {letzte_vt}.")
+            + "<br><small>"
+            + T("Nur Einzelchats, in denen die Gegenseite zuletzt geschrieben hat. Ein Feld, in dem schon etwas steht, wird nicht angetastet. Gesendet wird nichts.",
+                "Only direct chats where the other side wrote last. A field that already has text is left untouched. Nothing is sent.")
+            + "</small>")
     else:
-        vortippen_text = ("Aus &mdash; Entwuerfe entstehen nur, wenn die "
-                          "Erweiterung danach fragt.")
+        vortippen_text = T("Aus &mdash; Entwuerfe entstehen nur, wenn die Erweiterung danach fragt.",
+                           "Off &mdash; drafts are only created when the extension asks.")
 
     offene_vormerkungen = ""
     if offen:
@@ -3360,7 +3362,7 @@ def oberflaeche(anfrage: Request, trotzdem: int = 0, pruefen: int = 0) -> Respon
             f"<li><b>{esc(anzeige(o['chat'], karte))}</b>: {esc(o['text'])}</li>"
             for o in offen)
         offene_vormerkungen = (
-            f"<p>Wartet auf das Oeffnen des Chats:</p><ul>{eintraege}</ul>")
+            f"<p>{T('Wartet auf das Oeffnen des Chats:','Waiting for the chat to be opened:')}</p><ul>{eintraege}</ul>")
 
     knopf = ("px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium "
              "hover:bg-slate-800")
@@ -3379,43 +3381,39 @@ def oberflaeche(anfrage: Request, trotzdem: int = 0, pruefen: int = 0) -> Respon
 {lampen_html}
 
 <div class="flex flex-wrap gap-2 mb-4">
- {marke("Anbieter", z['anbieter'])}
- {marke("Modell", z['modell'])}
- {marke("Schluessel", 'gesetzt' if z['schluessel_gesetzt'] else 'FEHLT')}
- {marke("Entwuerfe", z['entwuerfe'])}
- {marke("bewertet", z['davon_bewertet'])}
+ {marke(T("Anbieter","Provider"), z['anbieter'])}
+ {marke(T("Modell","Model"), z['modell'])}
+ {marke(T("Schluessel","Key"), T("gesetzt","set") if z['schluessel_gesetzt'] else T("FEHLT","MISSING"))}
+ {marke(T("Entwuerfe","Drafts"), z['entwuerfe'])}
+ {marke(T("bewertet","rated"), z['davon_bewertet'])}
 </div>
 
 <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 mb-4">
- <p class="font-medium">Vortippen erreicht das Telefon nicht.</p>
- <p class="text-sm text-slate-700 mt-1">WhatsApp gleicht Entwuerfe nicht
- zwischen Geraeten ab. Was der Koppler in seiner Sitzung setzt, sieht
- niemand &mdash; am 22.09.2026 nachgewiesen. Antworten gehen ueber
- <a class="underline" href="/">Chats</a>.</p>
+ <p class="font-medium">{T("Vortippen erreicht das Telefon nicht.","Pre-typing does not reach the phone.")}</p>
+ <p class="text-sm text-slate-700 mt-1">{T("WhatsApp gleicht Entwuerfe nicht zwischen Geraeten ab. Was der Koppler in seiner Sitzung setzt, sieht niemand. Antworten gehen ueber","WhatsApp does not sync drafts between devices. What the connector sets in its session, nobody sees. Reply via")} <a class="underline" href="/">{T("Chats","Chats")}</a>.</p>
  <div class="flex items-center gap-2 mt-3">
   <form method="post" action="/vortippen-schalter">
-   <button class="{leise}">{'Abschalten' if vortippen_an() else 'Einschalten'}</button>
+   <button class="{leise}">{T("Abschalten","Turn off") if vortippen_an() else T("Einschalten","Turn on")}</button>
   </form>
   <span class="text-xs text-slate-600">{vortippen_text}</span>
  </div>
 </div>
 
 <div class="rounded-xl border border-slate-200 bg-white p-4 mb-4">
- <p class="font-medium mb-1">Fuer einen Chat vormerken</p>
- <p class="text-sm text-slate-600 mb-3">Legt einen Text bereit. Erreicht aus
- demselben Grund nur die Browser-Erweiterung, nicht das Telefon.</p>
+ <p class="font-medium mb-1">{T("Fuer einen Chat vormerken","Queue for a chat")}</p>
+ <p class="text-sm text-slate-600 mb-3">{T("Legt einen Text bereit. Erreicht aus demselben Grund nur die Browser-Erweiterung, nicht das Telefon.","Prepares a text. For the same reason it only reaches the browser extension, not the phone.")}</p>
  <form method="post" action="/vormerken-formular"
        class="flex flex-wrap items-center gap-2">
   {chatliste}
-  <input name="text" required placeholder="Text, der im Feld stehen soll"
+  <input name="text" required placeholder="{T('Text, der im Feld stehen soll','Text to place in the field')}"
      class="{feld} flex-1 min-w-48">
-  <button type="submit" class="{knopf}">Vormerken</button>
+  <button type="submit" class="{knopf}">{T("Vormerken","Queue")}</button>
  </form>
  {offene_vormerkungen}
 </div>
 
 <form method="post" action="/abmeldung">
- <button class="{leise}">Abmelden</button>
+ <button class="{leise}">{T("Abmelden","Sign out")}</button>
 </form>{fuss()}""")
 
 
