@@ -4,11 +4,21 @@ const FELDER = ['dienst', 'token', 'profil', 'cfKennung', 'cfGeheimnis'];
 
 const STANDARD = {
   dienst: 'http://localhost:8099',
-  profil: 'stefan',
+  profil: 'standard',
   token: '',
   cfKennung: '',
   cfGeheimnis: '',
 };
+
+// Sprache nach dem Browser: Deutsch bleibt Vorgabe, alles andere Englisch.
+const SPRACHE = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+const T = (de, en) => (SPRACHE === 'en' ? en : de);
+
+// Die Seite traegt Deutsch im Markup und Englisch in data-en.
+if (SPRACHE === 'en') {
+  document.querySelectorAll('[data-en]').forEach((el) => { el.innerHTML = el.dataset.en; });
+  document.querySelectorAll('[data-en-placeholder]').forEach((el) => { el.placeholder = el.dataset.enPlaceholder; });
+}
 
 chrome.storage.sync.get(STANDARD)
   .then((w) => FELDER.forEach((f) => (document.getElementById(f).value = w[f])));
@@ -24,6 +34,7 @@ document.getElementById('speichern').addEventListener('click', async () => {
   // Ehrlich bleiben: ohne Token laeuft nichts, das soll man hier schon sehen
   // und nicht erst als 401 mitten im Chat.
   s.textContent = werte.token
-    ? 'Gespeichert.'
-    : 'Gespeichert — aber ohne Zugangstoken weist der Dienst jede Anfrage ab.';
+    ? T('Gespeichert.', 'Saved.')
+    : T('Gespeichert — aber ohne Zugangstoken weist der Dienst jede Anfrage ab.',
+        'Saved — but without an access token the service rejects every request.');
 });

@@ -45,28 +45,35 @@ DB_PFAD = os.environ.get("ENTWURF_DB", "/daten/entwuerfe.sqlite3")
 ZUGANG_START = os.environ.get("ZUGANG_TOKEN", "").strip()
 VERWALTUNG_START = os.environ.get("VERWALTUNG_TOKEN", "").strip()
 
+from .i18n import T
+
 MINDESTLAENGE = 16
 
 # Kein stiller Notlauf ohne Schutz. Ein Dienst, der im Zweifel offen startet,
 # steht irgendwann offen, ohne dass es jemand merkt -- lieber gar nicht starten.
 if not ZUGANG_START:
     raise RuntimeError(
-        "ZUGANG_TOKEN ist nicht gesetzt. Der Dienst zeigt Chat-Inhalte und "
-        "startet deshalb nicht ohne Zugangsschutz. Token erzeugen mit: "
-        "openssl rand -base64 32")
+        T("ZUGANG_TOKEN ist nicht gesetzt. Der Dienst zeigt Chat-Inhalte und "
+          "startet deshalb nicht ohne Zugangsschutz. Token erzeugen mit: "
+          "openssl rand -base64 32",
+          "ZUGANG_TOKEN is not set. The service shows chat content and therefore "
+          "refuses to start without access protection. Create a token with: "
+          "openssl rand -base64 32"))
 if len(ZUGANG_START) < MINDESTLAENGE:
-    raise RuntimeError(f"ZUGANG_TOKEN ist zu kurz (mindestens {MINDESTLAENGE} Zeichen).")
+    raise RuntimeError(T(f"ZUGANG_TOKEN ist zu kurz (mindestens {MINDESTLAENGE} Zeichen).", f"ZUGANG_TOKEN is too short (at least {MINDESTLAENGE} characters)."))
 
 # VERWALTUNG_TOKEN ist freiwillig: fehlt es, gibt es die Schnittstelle nicht.
 # Abwesenheit schaltet ab, nicht auf. Ein Vertipper im Namen faellt sofort auf,
 # weil /verwaltung/zustand dann mit 503 antwortet statt still offen zu stehen.
 if VERWALTUNG_START:
     if len(VERWALTUNG_START) < MINDESTLAENGE:
-        raise RuntimeError(f"VERWALTUNG_TOKEN ist zu kurz (mindestens {MINDESTLAENGE} Zeichen).")
+        raise RuntimeError(T(f"VERWALTUNG_TOKEN ist zu kurz (mindestens {MINDESTLAENGE} Zeichen).", f"VERWALTUNG_TOKEN is too short (at least {MINDESTLAENGE} characters)."))
     if hmac.compare_digest(VERWALTUNG_START, ZUGANG_START):
         raise RuntimeError(
-            "VERWALTUNG_TOKEN und ZUGANG_TOKEN sind gleich. Damit waere die "
-            "Trennung zwischen Betrieb und Inhalt nur behauptet.")
+            T("VERWALTUNG_TOKEN und ZUGANG_TOKEN sind gleich. Damit waere die "
+              "Trennung zwischen Betrieb und Inhalt nur behauptet.",
+              "VERWALTUNG_TOKEN and ZUGANG_TOKEN are identical. The separation "
+              "between operations and content would be merely claimed."))
 
 KEKS = "entwurf_sitzung"
 SITZUNGSDAUER = int(os.environ.get("SITZUNGSDAUER", str(12 * 3600)))
@@ -152,10 +159,10 @@ def erneuern(name: str, neu: str | None = None) -> str:
     """Token ersetzen. Ohne Vorgabe wird einer erzeugt."""
     wert = (neu or "").strip() or neuer_token()
     if len(wert) < MINDESTLAENGE:
-        raise HTTPException(400, f"Token zu kurz (mindestens {MINDESTLAENGE} Zeichen).")
+        raise HTTPException(400, T(f"Token zu kurz (mindestens {MINDESTLAENGE} Zeichen).", f"Token too short (at least {MINDESTLAENGE} characters)."))
     gegenstueck = verwaltung_token() if name == "zugang" else zugang_token()
     if gegenstueck and hmac.compare_digest(wert, gegenstueck):
-        raise HTTPException(400, "Die beiden Token duerfen nicht gleich sein.")
+        raise HTTPException(400, T("Die beiden Token duerfen nicht gleich sein.","The two tokens must not be identical."))
     _geschrieben(name, wert)
     return wert
 
@@ -314,7 +321,7 @@ def api_zugang(anfrage: Request) -> None:
     """
     if token_stimmt(_bearer(anfrage)) or access_benutzer(anfrage):
         return
-    raise HTTPException(401, "Zugang verweigert", headers={"WWW-Authenticate": "Bearer"})
+    raise HTTPException(401, T("Zugang verweigert","Access denied"), headers={"WWW-Authenticate": "Bearer"})
 
 
 def verwaltung_zugang(anfrage: Request) -> None:
@@ -326,9 +333,10 @@ def verwaltung_zugang(anfrage: Request) -> None:
     """
     if not VERWALTUNG_START and not verwaltung_token():
         raise HTTPException(
-            503, "Verwaltungsschnittstelle nicht eingerichtet (VERWALTUNG_TOKEN fehlt).")
+            503, T("Verwaltungsschnittstelle nicht eingerichtet (VERWALTUNG_TOKEN fehlt).",
+                   "Admin interface not configured (VERWALTUNG_TOKEN missing)."))
     if not _stimmt(_bearer(anfrage), verwaltung_token()):
-        raise HTTPException(401, "Zugang verweigert", headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(401, T("Zugang verweigert","Access denied"), headers={"WWW-Authenticate": "Bearer"})
 
 
 def mensch_oder_erweiterung(anfrage: Request) -> None:
@@ -341,7 +349,7 @@ def mensch_oder_erweiterung(anfrage: Request) -> None:
     if (token_stimmt(_bearer(anfrage)) or access_benutzer(anfrage)
             or sitzung_gueltig(anfrage.cookies.get(KEKS))):
         return
-    raise HTTPException(401, "Zugang verweigert", headers={"WWW-Authenticate": "Bearer"})
+    raise HTTPException(401, T("Zugang verweigert","Access denied"), headers={"WWW-Authenticate": "Bearer"})
 
 
 def angemeldet(anfrage: Request) -> bool:

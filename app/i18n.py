@@ -11,9 +11,17 @@ getrennter Katalog, der auseinanderlaeuft.
 Gesetzt wird die Sprache mit SPRACHE=de oder SPRACHE=en. Unbekanntes faellt
 auf Deutsch zurueck.
 
-Stand: das Geruest steht und wird schrittweise durch den Code gezogen. Noch
-nicht jeder Text ist zweisprachig; was nicht in T(...) steht, erscheint auf
-Deutsch, unabhaengig von SPRACHE.
+Was NICHT uebersetzt wird, und warum:
+
+* **Datenschluessel.** Die Wissensbereiche (Person, Beziehung, Vorlieben, ...)
+  stehen so in der Datenbank und kommen so vom Modell zurueck. Zwei
+  Vokabulare in derselben Tabelle waeren nicht mehr zusammenzufuehren.
+  Uebersetzt wird nur die ANZEIGE, siehe bereich_anzeige() in main.py.
+* **Formularwerte.** value="loeschen" und dergleichen sind Protokoll
+  zwischen Seite und Endpunkt, kein Text fuer Menschen.
+* **Die Analyse-Prompts** (WISSEN_SYSTEM, BILD_SYSTEM, TERMIN_SYSTEM). Sie
+  legen ebenjenes Vokabular fest. Auf die Ausgabe wirkt es nicht: das Modell
+  antwortet in der Sprache des jeweiligen Chats, nicht in der des Prompts.
 """
 from __future__ import annotations
 

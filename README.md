@@ -44,7 +44,7 @@ wichtigsten:
 
 | Variable | Vorgabe | Bedeutung |
 |---|---|---|
-| `SPRACHE` | `de` | Oberflächensprache (`de`/`en`) |
+| `SPRACHE` | `de` | Oberflächensprache (`de`/`en`), vollständig übersetzt |
 | `EIGENER_NAME` | `Ich` | in wessen Namen die KI schreibt |
 | `MODELL_ANBIETER` / `MODELL` | `claude` / `claude-sonnet-5` | KI-Backend |
 | `MODELL_API_SCHLUESSEL` | — | **Pflicht** |
@@ -123,7 +123,9 @@ WhatsApp QR code under **More**. Expose it through your own reverse proxy or
 the optional Cloudflare tunnel in `docker-compose.yml`.
 
 Config is entirely via environment variables — see [`.env.beispiel`](.env.beispiel).
-Set `SPRACHE=en` for the English UI.
+Set `SPRACHE=en` for the English UI; the whole interface, the error
+messages and the drafting prompt switch over. Knowledge categories stay
+German internally (they are database keys) and are translated for display.
 
 ### License
 

@@ -19,6 +19,10 @@ const STANDARD = {
   cfGeheimnis: '',
 };
 
+// Sprache nach dem Browser: Deutsch bleibt Vorgabe, alles andere Englisch.
+const SPRACHE = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+const T = (de, en) => (SPRACHE === 'en' ? en : de);
+
 async function koepfe() {
   const w = await chrome.storage.sync.get(STANDARD);
   const k = { 'Content-Type': 'application/json' };
@@ -36,7 +40,8 @@ async function koepfe() {
 async function anfragen(pfad, rumpf) {
   const { w, k } = await koepfe();
   if (!w.token) {
-    return { fehler: 'Kein Zugangstoken hinterlegt — in den Einstellungen der Erweiterung eintragen.' };
+    return { fehler: T('Kein Zugangstoken hinterlegt — in den Einstellungen der Erweiterung eintragen.',
+                       'No access token stored — set it in the extension settings.') };
   }
   let antwort;
   try {
@@ -46,24 +51,25 @@ async function anfragen(pfad, rumpf) {
       body: JSON.stringify(rumpf),
     });
   } catch (e) {
-    return { fehler: `Dienst nicht erreichbar: ${e.message}` };
+    return { fehler: `${T('Dienst nicht erreichbar', 'Service unreachable')}: ${e.message}` };
   }
   if (antwort.status === 401 || antwort.status === 403) {
-    return { fehler: 'Zugang verweigert — Token in den Einstellungen pruefen.' };
+    return { fehler: T('Zugang verweigert — Token in den Einstellungen pruefen.',
+                       'Access denied — check the token in the settings.') };
   }
   if (!antwort.ok) {
-    return { fehler: `Dienst antwortet ${antwort.status}: ${(await antwort.text()).slice(0, 200)}` };
+    return { fehler: `${T('Dienst antwortet', 'Service responds')} ${antwort.status}: ${(await antwort.text()).slice(0, 200)}` };
   }
   try {
     return { daten: await antwort.json() };
   } catch {
-    return { fehler: 'Antwort des Dienstes war kein JSON.' };
+    return { fehler: T('Antwort des Dienstes war kein JSON.', 'The service reply was not JSON.') };
   }
 }
 
 async function abholen(chat) {
   const { w, k } = await koepfe();
-  if (!w.token) return { fehler: 'Kein Zugangstoken hinterlegt.' };
+  if (!w.token) return { fehler: T('Kein Zugangstoken hinterlegt.', 'No access token stored.') };
   try {
     const u = `${w.dienst}/abholen?chat=${encodeURIComponent(chat)}`
             + `&profil=${encodeURIComponent(w.profil)}`;
@@ -71,7 +77,7 @@ async function abholen(chat) {
     if (!a.ok) return { fehler: `Dienst antwortet ${a.status}` };
     return { daten: await a.json() };
   } catch (e) {
-    return { fehler: `Dienst nicht erreichbar: ${e.message}` };
+    return { fehler: `${T('Dienst nicht erreichbar', 'Service unreachable')}: ${e.message}` };
   }
 }
 

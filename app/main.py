@@ -104,7 +104,7 @@ def eingerichtet() -> bool:
     return zugang.gesetzt(modell_konfig()[2])
 
 
-app = FastAPI(title="WhatsApp-Entwurfsdienst")
+app = FastAPI(title="wa-gehilfe")
 
 # Das fertige Stilblatt aus dem Bau. Pfad relativ zu DIESER Datei, nicht zum
 # Arbeitsverzeichnis: der Dienst wird als Modul gestartet, und wo uvicorn
@@ -374,7 +374,7 @@ def modell_bild(rohdaten: bytes, mimetyp: str, hoechstens: int = 200) -> str:
                  {"type": "image", "source": {"type": "base64",
                                               "media_type": typ,
                                               "data": kodiert}},
-                 {"type": "text", "text": "Beschreibe dieses Bild."}]}]},
+                 {"type": "text", "text": T("Beschreibe dieses Bild.","Describe this image.")}]}]},
         )
         teile = antwort.get("content") or []
         return "".join(x.get("text", "") for x in teile).strip()
@@ -387,14 +387,14 @@ def modell_bild(rohdaten: bytes, mimetyp: str, hoechstens: int = 200) -> str:
              "messages": [
                  {"role": "system", "content": BILD_SYSTEM},
                  {"role": "user", "content": [
-                     {"type": "text", "text": "Beschreibe dieses Bild."},
+                     {"type": "text", "text": T("Beschreibe dieses Bild.","Describe this image.")},
                      {"type": "image_url",
                       "image_url": {"url": f"data:{typ};base64,{kodiert}"}}]}]},
         )
         wahl = (antwort.get("choices") or [{}])[0]
         return ((wahl.get("message") or {}).get("content") or "").strip()
 
-    raise HTTPException(500, f"Unbekannter Anbieter: {anbieter}")
+    raise HTTPException(500, T(f"Unbekannter Anbieter: {anbieter}", f"Unknown provider: {anbieter}"))
 
 
 def modell_fragen(system: str, nutzer: str, hoechstens: int = 800) -> str:
@@ -431,7 +431,7 @@ def modell_fragen(system: str, nutzer: str, hoechstens: int = 800) -> str:
         wahl = (antwort.get("choices") or [{}])[0]
         return ((wahl.get("message") or {}).get("content") or "").strip()
 
-    raise HTTPException(500, f"Unbekannter Anbieter: {anbieter}")
+    raise HTTPException(500, T(f"Unbekannter Anbieter: {anbieter}", f"Unknown provider: {anbieter}"))
 
 
 # --- Wissen ueber die Kontakte ----------------------------------------------
@@ -445,6 +445,12 @@ def modell_fragen(system: str, nutzer: str, hoechstens: int = 800) -> str:
 # gezielt streichen, was falsch ist oder nicht gespeichert bleiben soll. Und
 # bewusst nur, was im Chat steht -- nichts Erschlossenes, nichts Geratenes.
 
+# Die Analyse-Prompts bleiben bewusst deutsch, auch bei SPRACHE=en.
+#
+# Sie legen das Vokabular der Bereiche fest (siehe BEREICHE), und das sind
+# Datenschluessel. Ein zweisprachiger Prompt erzeugte zwei Vokabulare in
+# derselben Tabelle. Auf die Ausgabe wirkt es nicht: das Modell antwortet in
+# der Sprache des jeweiligen Chats, nicht in der des Prompts.
 WISSEN_SYSTEM = """Du liest einen WhatsApp-Verlauf und haeltst fest, was
 daraus ueber den Gespraechspartner hervorgeht.
 
@@ -614,7 +620,7 @@ def name_ermitteln(chat_name: str, anzahl: int = 60) -> str | None:
         return None
 
     verlauf = "\n".join(
-        f"{EIGENER_NAME if n.get('von_mir') else 'Gegenueber'}: {n.get('text','')}"
+        f"{EIGENER_NAME if n.get('von_mir') else T('Gegenueber','Other side')}: {n.get('text','')}"
         for n in nachrichten if (n.get("text") or "").strip())[:12000]
     if not verlauf.strip():
         return None
@@ -698,7 +704,7 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
         # Uebersicht und wurde jede Woche erneut vergeblich versucht.
         # Am 21.09.2026 traf das drei Chats des ersten grossen Laufs.
         return {"chat": chat_name, "gelesen": 0, "neu": 0,
-                "hinweis": "Kein Verlauf vorhanden."}
+                "hinweis": T("Kein Verlauf vorhanden.","No history available.")}
 
     # Auch hier ueber medien_als_text: eine Wissensrunde, die
     # Sprachnachrichten ueberspringt, uebersieht genau die Chats, in denen
@@ -712,7 +718,7 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
     # Vorhandene Beschreibungen nimmt die Runde selbstverstaendlich mit.
     aufbereitet = medien_als_text(nachrichten, chat_name,
                                   hoechstens_neu=3, bilder=False)
-    verlauf = "\n".join(f"{'ich' if n.von_mir else chat_name}: {n.text}"
+    verlauf = "\n".join(f"{T('ich','me') if n.von_mir else chat_name}: {n.text}"
                         for n in aufbereitet)[:60000]
 
     # Gruppe oder Einzelchat? Die Kennung sagt es: WhatsApp haengt an
@@ -720,7 +726,7 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
     # die Kennung liegt hier ohnehin schon vor.
     gruppe = str(kid).endswith("@g.us")
     system = WISSEN_SYSTEM_GRUPPE if gruppe else WISSEN_SYSTEM
-    frage = (f"{'Gruppenverlauf' if gruppe else 'Verlauf'} mit {chat_name}:"
+    frage = (f"{T('Gruppenverlauf','Group history') if gruppe else T('Verlauf','History')} {T('mit','with')} {chat_name}:"
              f"\n\n{verlauf}")
     roh = modell_fragen(system, frage, hoechstens=WISSEN_ANTWORT_TOKEN)
     if not roh.strip():
@@ -731,11 +737,11 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
         roh = modell_fragen(system, frage, hoechstens=WISSEN_ANTWORT_TOKEN)
     if not roh.strip():
         return {"chat": chat_name, "gelesen": len(nachrichten), "neu": 0,
-                "hinweis": "Modell gab zweimal nichts zurueck."}
+                "hinweis": T("Modell gab zweimal nichts zurueck.","Model returned nothing twice.")}
 
     eintraege = liste_aus_antwort(roh)
     if eintraege is None:
-        raise HTTPException(502, f"Antwort war kein JSON: {roh[:200]}")
+        raise HTTPException(502, T(f"Antwort war kein JSON: {roh[:200]}", f"Reply was not JSON: {roh[:200]}"))
 
     neu = 0
     with closing(db()) as v:
@@ -768,14 +774,14 @@ def wissen_aufbauen(chat_name: str, profil: str, anzahl: int = 200) -> dict[str,
 # kleinstmoeglichen Anfrage, und das Ergebnis eine Weile gemerkt, damit die
 # Uebersicht nicht bei jedem Neuladen Geld kostet.
 
-_PROBE: dict[str, Any] = {"zeit": 0.0, "ok": False, "text": "noch nicht geprueft"}
+_PROBE: dict[str, Any] = {"zeit": 0.0, "ok": False, "text": T("noch nicht geprueft","not checked yet")}
 PROBE_GUELTIG = 300.0
 
 
 def modell_probe(erzwingen: bool = False) -> dict[str, Any]:
     anbieter, modell, schluessel = modell_konfig()
     if not zugang.gesetzt(schluessel):
-        return {"ok": False, "text": "kein Schluessel hinterlegt", "zeit": time.time()}
+        return {"ok": False, "stufe": "aus", "text": T("kein Schluessel hinterlegt","no key stored"), "zeit": time.time()}
     if not erzwingen and (time.time() - _PROBE["zeit"]) < PROBE_GUELTIG:
         return _PROBE
 
@@ -791,8 +797,8 @@ def modell_probe(erzwingen: bool = False) -> dict[str, Any]:
                        {"model": modell, "max_tokens": 1,
                         "messages": [{"role": "user", "content": "ping"}]})
         else:
-            raise HTTPException(500, f"Unbekannter Anbieter: {anbieter}")
-        _PROBE.update({"ok": True, "text": f"{anbieter} / {modell} antwortet",
+            raise HTTPException(500, T(f"Unbekannter Anbieter: {anbieter}", f"Unknown provider: {anbieter}"))
+        _PROBE.update({"ok": True, "text": T(f"{anbieter} / {modell} antwortet", f"{anbieter} / {modell} responds"),
                        "zeit": time.time()})
     except HTTPException as e:
         # Die Meldung des Anbieters mitnehmen: "invalid x-api-key" ist eine
@@ -806,22 +812,26 @@ def modell_probe(erzwingen: bool = False) -> dict[str, Any]:
 def whatsapp_probe() -> dict[str, Any]:
     """Zustand der gekoppelten Sitzung, in Worten der Oberflaeche."""
     if not koppler_da():
-        return {"ok": False, "stufe": "aus", "text": "kein Koppler eingerichtet"}
+        return {"ok": False, "stufe": "aus", "text": T("kein Koppler eingerichtet","no connector configured")}
     z = koppler("/zustand")
     st = z.get("status", "unbekannt")
     if st == "bereit":
         return {"ok": True, "stufe": "gut",
-                "text": "verbunden" + (f" als {z['nummer']}" if z.get("nummer") else "")}
+                "text": T("verbunden","connected") + (f" {T('als','as')} {z['nummer']}" if z.get("nummer") else "")}
     if st == "qr":
-        return {"ok": False, "stufe": "wartet", "text": "wartet auf das Scannen des Codes"}
+        return {"ok": False, "stufe": "wartet", "text": T("wartet auf das Scannen des Codes","waiting for the code to be scanned")}
     if st == "nicht_erreichbar":
-        return {"ok": False, "stufe": "schlecht", "text": "Koppler antwortet nicht"}
+        return {"ok": False, "stufe": "schlecht", "text": T("Koppler antwortet nicht","connector not responding")}
     return {"ok": False, "stufe": "schlecht", "text": st}
 
 
 # --- Prompt -----------------------------------------------------------------
 
-SYSTEM = f"""Du formulierst Antwortentwuerfe fuer WhatsApp-Nachrichten, die
+# Der Kern der Regeln in beiden Sprachen; die letzte Regel unterscheidet
+# Hand-Entwurf (darf KEIN_ENTWURF sagen) und Vortippen (muss liefern). Das
+# Sentinel KEIN_ENTWURF bleibt in beiden Sprachen gleich -- der Code prueft
+# darauf.
+_SYSTEM_KERN = T(f"""Du formulierst Antwortentwuerfe fuer WhatsApp-Nachrichten, die
 {EIGENER_NAME} anschliessend prueft, aendert oder verwirft. Du schreibst als
 {EIGENER_NAME}, nicht ueber die Person.
 
@@ -835,8 +845,26 @@ Regeln:
   wird verworfen.
 - Erfinde keine Zusagen, Termine, Preise oder Tatsachen. Fehlt etwas
   Entscheidendes, formuliere die Rueckfrage, die {EIGENER_NAME} stellen wuerde.
-- Wenn die letzte Nachricht keine Antwort braucht, antworte ausschliesslich mit:
-  KEIN_ENTWURF"""
+""", f"""You draft replies to WhatsApp messages that {EIGENER_NAME} then reviews,
+edits or discards. You write as {EIGENER_NAME}, not about them.
+
+Rules:
+- Write the way {EIGENER_NAME} writes in this chat: same language, same form of
+  address, same length, same tone. A chat with a buddy sounds different from
+  one with the landlord.
+- Only the message text. No quotation marks, no preamble, no explanation, no
+  signature.
+- When in doubt, keep it short. A draft that is too brief is quickly extended;
+  one that is too long gets discarded.
+- Do not invent commitments, appointments, prices or facts. If something
+  essential is missing, phrase the follow-up question {EIGENER_NAME} would ask.
+""")
+
+SYSTEM = _SYSTEM_KERN + T(
+    "- Wenn die letzte Nachricht keine Antwort braucht, antworte ausschliesslich mit:\n"
+    "  KEIN_ENTWURF",
+    "- If the last message needs no reply, answer with exactly:\n"
+    "  KEIN_ENTWURF")
 
 # Fuer das automatische Vortippen dieselben Regeln, aber ohne die letzte.
 #
@@ -845,12 +873,13 @@ Regeln:
 # dann", entscheidet nicht der Dienst -- vorgetippt wird immer, und
 # weggeworfen wird mit einem Tastendruck. Ein fehlender Entwurf dagegen faellt
 # niemandem auf, und dann war die ganze Runde umsonst.
-SYSTEM_AUTO = SYSTEM.replace(
-    "- Wenn die letzte Nachricht keine Antwort braucht, antworte ausschliesslich mit:\n"
-    "  KEIN_ENTWURF",
+SYSTEM_AUTO = _SYSTEM_KERN + T(
     "- Schreibe IMMER einen Entwurf, auch wenn die letzte Nachricht keine Frage\n"
     "  war. Dann ist es das, was man ueblicherweise darauf antwortet -- eine\n"
-    "  kurze Bestaetigung, ein Dank, ein Gruss. Niemals KEIN_ENTWURF.")
+    "  kurze Bestaetigung, ein Dank, ein Gruss. Niemals KEIN_ENTWURF.",
+    "- ALWAYS write a draft, even if the last message was not a question. Then\n"
+    "  it is what one usually replies to it -- a short acknowledgement, a\n"
+    "  thanks, a greeting. Never KEIN_ENTWURF.")
 
 
 def beispiele_holen(chat: str, profil: str) -> list[sqlite3.Row]:
@@ -871,6 +900,27 @@ def beispiele_holen(chat: str, profil: str) -> list[sqlite3.Row]:
         """, (chat, profil, BEISPIELE_MAX)).fetchall()
 
 
+# Die Bereiche sind DATENSCHLUESSEL, keine Beschriftungen.
+#
+# Sie stehen so in der Datenbank, das Modell liefert sie so zurueck, und die
+# Wissensseite gruppiert danach. Wuerde man sie je nach SPRACHE uebersetzen,
+# entstuenden zwei Vokabulare in derselben Tabelle -- ein deutscher Eintrag
+# "Person" und ein englischer "Person" waeren zufaellig gleich, "Vorlieben"
+# und "Preferences" nicht. Deshalb: Schluessel bleiben deutsch, nur die
+# ANZEIGE wird uebersetzt.
+BEREICHE = ("Person", "Beziehung", "Vorlieben", "Vorhaben", "Thema", "Ton")
+
+_BEREICH_EN = {
+    "Person": "Person", "Beziehung": "Relationship", "Vorlieben": "Preferences",
+    "Vorhaben": "Plans", "Thema": "Topic", "Ton": "Tone",
+}
+
+
+def bereich_anzeige(schluessel: str) -> str:
+    """Den Bereich so zeigen, wie ihn der Mensch liest -- Schluessel bleibt."""
+    return T(schluessel, _BEREICH_EN.get(schluessel, schluessel))
+
+
 def prompt_bauen(nachrichten: list["Nachricht"], chat: str, profil: str,
                  hinweis: str | None) -> str:
     teile: list[str] = []
@@ -882,43 +932,43 @@ def prompt_bauen(nachrichten: list["Nachricht"], chat: str, profil: str,
         # Mit dem abgeleiteten Namen, wenn es einen gibt: "Was ueber Pascal
         # Roth (+41 76 ...) bekannt ist" sagt dem Modell, an wen es schreibt.
         # Eine nackte Nummer sagt ihm gar nichts.
-        teile.append(f"Was ueber {anzeige(chat)} bekannt ist:")
+        teile.append(T(f"Was ueber {anzeige(chat)} bekannt ist:", f"What is known about {anzeige(chat)}:"))
         teile.extend(f"- [{z['bereich']}] {z['aussage']}" for z in bekannt)
-        teile.append("Nutze das, aber erwaehne es nicht ungefragt.\n")
+        teile.append(T("Nutze das, aber erwaehne es nicht ungefragt.\n","Use it, but do not bring it up unprompted.\n"))
 
     # Und was in Gruppen ueber diese Person angefallen ist. Getrennt
     # ausgewiesen, samt Herkunft: es stammt nicht aus diesem Gespraech, und
     # das Modell soll es nicht so behandeln, als haette man es hier erfahren.
     aus_gruppen = wissen_aus_gruppen(chat, profil)
     if aus_gruppen:
-        teile.append("Aus gemeinsamen Gruppen ueber diese Person bekannt:")
-        teile.extend(f"- [{z['bereich']}] {z['aussage']} (aus: {z['quelle']})"
+        teile.append(T("Aus gemeinsamen Gruppen ueber diese Person bekannt:","Known about this person from shared groups:"))
+        teile.extend(f"- [{z['bereich']}] {z['aussage']} ({T('aus','from')}: {z['quelle']})"
                      for z in aus_gruppen)
-        teile.append("Vorsicht damit: es stammt aus einer Gruppe, nicht aus "
-                     "diesem Gespraech. Nicht darauf anspielen.\n")
+        teile.append(T("Vorsicht damit: es stammt aus einer Gruppe, nicht aus diesem Gespraech. Nicht darauf anspielen.\n",
+                       "Careful with this: it comes from a group, not from this conversation. Do not allude to it.\n"))
 
     beisp = beispiele_holen(chat, profil)
     if beisp:
-        teile.append("Frueher in diesem Chat -- so wurden deine Entwuerfe aufgenommen:")
+        teile.append(T("Frueher in diesem Chat -- so wurden deine Entwuerfe aufgenommen:","Earlier in this chat -- how your drafts were received:"))
         for b in beisp:
             if b["ergebnis"] == "geaendert" and b["endfassung"]:
-                teile.append(f"- Dein Entwurf: {b['entwurf']}\n"
-                             f"  {EIGENER_NAME} schrieb stattdessen: {b['endfassung']}")
+                teile.append(T(f"- Dein Entwurf: {b['entwurf']}\n  {EIGENER_NAME} schrieb stattdessen: {b['endfassung']}",
+                               f"- Your draft: {b['entwurf']}\n  {EIGENER_NAME} wrote instead: {b['endfassung']}"))
             elif b["ergebnis"] == "verworfen":
-                teile.append(f"- Verworfen (unpassend): {b['entwurf']}")
+                teile.append(T(f"- Verworfen (unpassend): {b['entwurf']}", f"- Discarded (unsuitable): {b['entwurf']}"))
             else:
-                teile.append(f"- Unveraendert uebernommen: {b['entwurf']}")
-        teile.append("Richte dich danach.\n")
+                teile.append(T(f"- Unveraendert uebernommen: {b['entwurf']}", f"- Used unchanged: {b['entwurf']}"))
+        teile.append(T("Richte dich danach.\n","Follow that.\n"))
 
-    teile.append("Chatverlauf, aelteste zuerst:")
+    teile.append(T("Chatverlauf, aelteste zuerst:","Chat history, oldest first:"))
     for n in nachrichten:
-        wer = EIGENER_NAME if n.von_mir else (n.von or "Gegenueber")
+        wer = EIGENER_NAME if n.von_mir else (n.von or T("Gegenueber","Other side"))
         teile.append(f"[{wer}] {n.text}")
 
     if hinweis:
-        teile.append(f"\nHinweis von {EIGENER_NAME} fuer diese Antwort: {hinweis}")
+        teile.append(T(f"\nHinweis von {EIGENER_NAME} fuer diese Antwort: {hinweis}", f"\nNote from {EIGENER_NAME} for this reply: {hinweis}"))
 
-    teile.append("\nFormuliere jetzt den Antwortentwurf.")
+    teile.append(T("\nFormuliere jetzt den Antwortentwurf.","\nNow write the reply draft."))
     return "\n".join(teile)
 
 
@@ -1125,7 +1175,7 @@ def lampen(erzwingen: bool = False) -> str:
     w = whatsapp_probe()
     m = modell_probe(erzwingen)
     mstufe = "gut" if m.get("ok") else (
-        "aus" if "kein Schluessel" in m.get("text", "") else "schlecht")
+        "aus" if m.get("stufe") == "aus" else "schlecht")
     alter = m.get("zeit") and time.time() - m["zeit"]
     wann = (T(f"vor {int(alter)} s geprueft", f"checked {int(alter)} s ago") if alter and alter > 2 else T("gerade geprueft","just checked"))
 
@@ -1145,11 +1195,11 @@ def lampen(erzwingen: bool = False) -> str:
 
     return f"""<div class="flex flex-wrap gap-3 mb-4">
 {kachel(w['stufe'], "WhatsApp", w['text'],
-        '<a class="underline" href="/koppeln">verwalten</a>')}
-{kachel(mstufe, "KI-Modell", m.get('text') or '',
+        f'<a class="underline" href="/koppeln">{T("verwalten","manage")}</a>')}
+{kachel(mstufe, T("KI-Modell","AI model"), m.get('text') or '',
         f'{esc_h(wann)} &middot; <a class="underline" '
-        f'href="/einstellungen?trotzdem=1&amp;pruefen=1">jetzt pruefen</a> '
-        f'&middot; <a class="underline" href="/einrichtung">Schluessel</a>')}
+        f'href="/einstellungen?trotzdem=1&amp;pruefen=1">{T("jetzt pruefen","check now")}</a> '
+        f'&middot; <a class="underline" href="/einrichtung">{T("Schluessel","Key")}</a>')}
 </div>"""
 
 def anmeldeseite(hinweis: str = "") -> HTMLResponse:
@@ -1252,7 +1302,7 @@ def chat_auswahl(feld: str = "chat") -> str:
             "focus:outline-none focus:ring-2 focus:ring-slate-400")
     chats = koppler("/chats") if koppler_da() else None
     if not isinstance(chats, list) or not chats:
-        return (f'<input name="{feld}" placeholder="Chatname" required '
+        return (f'<input name="{feld}" placeholder="{T("Chatname","Chat name")}" required '
                 f'class="{stil}">')
 
     karte = namen_karte()
@@ -1264,9 +1314,9 @@ def chat_auswahl(feld: str = "chat") -> str:
         name = (c.get("name") or "").strip()
         if not name:
             continue
-        merk = " (Gruppe)" if c.get("gruppe") else ""
+        merk = f" ({T('Gruppe','group')})" if c.get("gruppe") else ""
         u = c.get("ungelesen") or 0
-        merk += f" \u2014 {u} ungelesen" if u else ""
+        merk += f" \u2014 {u} " + T("ungelesen", "unread") if u else ""
         # Der Wert bleibt der rohe Chatname -- er ist die Kennung. Nur die
         # Beschriftung traegt den abgeleiteten Namen dazu.
         zeilen.append(f'<option value="{esc_h(name)}">'
@@ -1281,28 +1331,24 @@ def koppel_abschnitt() -> str:
 
     if st == "qr" and z.get("qr"):
         return f"""
-<p>WhatsApp auf dem Telefon &rarr; Einstellungen &rarr; Verknuepfte Geraete &rarr;
-<b>Geraet verknuepfen</b>, dann diesen Code scannen:</p>
+<p>{T("WhatsApp auf dem Telefon &rarr; Einstellungen &rarr; Verknuepfte Geraete &rarr; <b>Geraet verknuepfen</b>, dann diesen Code scannen:","WhatsApp on the phone &rarr; Settings &rarr; Linked devices &rarr; <b>Link a device</b>, then scan this code:")}</p>
 <div style="margin:1rem 0;background:#fff;display:inline-block;padding:12px">
 {qr_svg(z['qr'])}
 </div>
-<p class="text-sm text-slate-600">Der Code wechselt regelmaessig; die Seite laedt sich selbst neu.</p>
+<p class="text-sm text-slate-600">{T("Der Code wechselt regelmaessig; die Seite laedt sich selbst neu.","The code changes regularly; the page reloads itself.")}</p>
 <script>setTimeout(() => location.reload(), 25000)</script>"""
 
     if st == "bereit":
-        return ("<p>&#10003; <b>Verbunden</b>"
-                + (f" als {esc_h(z.get('nummer'))}" if z.get("nummer") else "")
-                + ".</p><p>Vorgemerkte Texte werden direkt gesetzt &mdash; ohne dass "
-                  "ein WhatsApp-Fenster offen sein muss.</p>"
+        return (f"<p>&#10003; <b>{T('Verbunden','Connected')}</b>"
+                + (f" {T('als','as')} {esc_h(z.get('nummer'))}" if z.get("nummer") else "")
+                + f".</p><p>{T('Vorgemerkte Texte werden direkt gesetzt &mdash; ohne dass ein WhatsApp-Fenster offen sein muss.','Queued texts are set directly &mdash; no WhatsApp window needs to be open.')}</p>"
                   "<form method=post action='/koppeln-loesen'>"
-                  "<button>Verbindung loesen</button></form>")
+                  f"<button>{T('Verbindung loesen','Unlink')}</button></form>")
 
     if st == "nicht_eingerichtet":
-        return ("<p>Kein Koppler vorhanden. Ohne ihn bleibt es bei der "
-                "Browser-Erweiterung: Entwuerfe entstehen nur fuer den Chat, der "
-                "gerade offen ist. Das ist kein Fehler, nur weniger.</p>")
+        return (f"<p>{T('Kein Koppler vorhanden. Ohne ihn bleibt es bei der Browser-Erweiterung: Entwuerfe entstehen nur fuer den Chat, der gerade offen ist. Das ist kein Fehler, nur weniger.','No connector present. Without it you are left with the browser extension: drafts only for the chat that is currently open. Not an error, just less.')}</p>")
 
-    return (f"<p>Zustand: <b>{esc_h(st)}</b>"
+    return (f"<p>{T('Zustand','State')}: <b>{esc_h(st)}</b>"
             + (f" &mdash; {esc_h(z.get('fehler'))}" if z.get("fehler") else "")
             + "</p><script>setTimeout(() => location.reload(), 8000)</script>")
 
@@ -1498,13 +1544,13 @@ def naechste_chats(profil: str, anzahl: int) -> list[str]:
 def wissen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
     """Eine Runde: wenige Chats auswerten, Ergebnis festhalten."""
     if not auto_an() or not koppler_da():
-        return {"uebersprungen": "abgeschaltet oder kein Koppler"}
+        return {"uebersprungen": T("abgeschaltet oder kein Koppler","switched off or no connector")}
     if whatsapp_probe().get("stufe") != "gut":
-        return {"uebersprungen": "WhatsApp nicht verbunden"}
+        return {"uebersprungen": T("WhatsApp nicht verbunden","WhatsApp not connected")}
     if not modell_probe().get("ok"):
         # Ohne funktionierendes Modell waere jede Runde nur eine Reihe von
         # Fehlschlaegen -- und beim naechsten Mal dieselbe.
-        return {"uebersprungen": "Modell antwortet nicht"}
+        return {"uebersprungen": T("Modell antwortet nicht","model not responding")}
 
     erledigt = []
     for name in naechste_chats(profil, AUTO_JE_RUNDE):
@@ -1612,11 +1658,11 @@ def vortippen_kandidaten(profil: str, anzahl: int) -> list[dict[str, Any]]:
 def vortippen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
     """Eine Runde: wenige Chats, je ein Entwurf, ins Feld geschrieben."""
     if not vortippen_an() or not koppler_da():
-        return {"uebersprungen": "abgeschaltet oder kein Koppler"}
+        return {"uebersprungen": T("abgeschaltet oder kein Koppler","switched off or no connector")}
     if whatsapp_probe().get("stufe") != "gut":
-        return {"uebersprungen": "WhatsApp nicht verbunden"}
+        return {"uebersprungen": T("WhatsApp nicht verbunden","WhatsApp not connected")}
     if not modell_probe().get("ok"):
-        return {"uebersprungen": "Modell antwortet nicht"}
+        return {"uebersprungen": T("Modell antwortet nicht","model not responding")}
 
     erledigt = []
     for k in vortippen_kandidaten(profil, VORTIPPEN_JE_RUNDE):
@@ -1626,7 +1672,7 @@ def vortippen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
             roh = koppler(f"/nachrichten?chat={urllib.parse.quote(kid)}"
                           f"&anzahl={VORTIPPEN_KONTEXT}")
             if not isinstance(roh, list) or not roh:
-                ergebnis = "kein Verlauf"
+                ergebnis = T("kein Verlauf","no history")
                 raise RuntimeError(ergebnis)
 
             # Ueber medien_als_text: Sprachnachrichten und Bilder kommen
@@ -1634,7 +1680,7 @@ def vortippen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
             # ersatzlos zu fehlen.
             nachrichten = medien_als_text(roh, name)
             if not nachrichten:
-                ergebnis = "nur Nachrichten ohne Text"
+                ergebnis = T("nur Nachrichten ohne Text","only messages without text")
                 raise RuntimeError(ergebnis)
 
             # Gegenprobe am echten Verlauf, VOR dem Modellaufruf.
@@ -1649,13 +1695,13 @@ def vortippen_runde(profil: str = PROFIL_STANDARD) -> dict[str, Any]:
             # vor, und ein gesparter Modellaufruf ist ein gesparter
             # Modellaufruf.
             if nachrichten[-1].von_mir:
-                ergebnis = "zuletzt von mir -- nichts zu beantworten"
+                ergebnis = T("zuletzt von mir -- nichts zu beantworten","last one was mine -- nothing to answer")
                 raise RuntimeError(ergebnis)
 
             text = modell_fragen(
                 SYSTEM_AUTO, prompt_bauen(nachrichten, name, profil, None)).strip()
             if not text or text == "KEIN_ENTWURF":
-                ergebnis = "Modell gab keinen Entwurf"
+                ergebnis = T("Modell gab keinen Entwurf","model gave no draft")
                 raise RuntimeError(ergebnis)
 
             # Erst ablegen, dann setzen: geht das Setzen schief, ist der
@@ -1769,9 +1815,9 @@ def bild_beschreiben(wa_id: str, chat: str) -> str:
 
     rohdaten, typ = medien_holen(wa_id)
     if not typ.startswith("image/"):
-        raise HTTPException(409, "kein Bild")
+        raise HTTPException(409, T("kein Bild","not an image"))
     begonnen = time.time()
-    text = (modell_bild(rohdaten, typ) or "").strip() or "(nichts erkennbar)"
+    text = (modell_bild(rohdaten, typ) or "").strip() or T("(nichts erkennbar)","(nothing recognisable)")
     with closing(db()) as v:
         v.execute("""INSERT INTO abschriften (wa_id, chat, text, sekunden,
                                               erstellt, art)
@@ -1837,7 +1883,7 @@ def medien_als_text(roh: list[dict[str, Any]], chat: str,
         wa = n.get("id")
         if wa in vorhanden:
             beschreibung, art = vorhanden[wa]
-            marke = "Sprachnachricht" if art == "sprache" else "Bild"
+            marke = T("Sprachnachricht","Voice message") if art == "sprache" else T("Bild","Image")
             # Die Herkunft bleibt sichtbar: das Modell soll wissen, dass der
             # Satz nicht getippt, sondern gesprochen oder gezeigt wurde.
             text = f"[{marke}: {beschreibung}]" + (f" {text}" if text else "")
@@ -1856,7 +1902,7 @@ def abschrift_erzeugen(wa_id: str, chat: str) -> str:
     m = koppler(f"/medien?id={urllib.parse.quote(wa_id)}")
     if not isinstance(m, dict) or not m.get("daten"):
         raise HTTPException(502, str((m or {}).get("fehler") or
-                                     "Aufnahme nicht abrufbar"))
+                                     T("Aufnahme nicht abrufbar","recording not retrievable")))
 
     # Ueber eine Datei und nicht ueber den Speicher: faster-whisper liest mit
     # PyAV, und das will einen Pfad oder einen Datenstrom. Eine temporaere
@@ -1874,7 +1920,7 @@ def abschrift_erzeugen(wa_id: str, chat: str) -> str:
     dauer = time.time() - begonnen
 
     if not text:
-        text = "(nichts Verstaendliches erkannt)"
+        text = T("(nichts Verstaendliches erkannt)","(nothing intelligible recognised)")
     with closing(db()) as v:
         v.execute("""INSERT INTO abschriften (wa_id, chat, text, sekunden, erstellt)
                      VALUES (?,?,?,?,?)
@@ -1900,15 +1946,15 @@ def abschrift_erzeugen(wa_id: str, chat: str) -> str:
 # Sprachnachricht eine leere Zeile, und der Verlauf saehe lueckenhaft aus,
 # obwohl nichts fehlt.
 TYP_TEXT = {
-    "ptt": "🎤 Sprachnachricht",
+    "ptt": "🎤 " + T("Sprachnachricht","Voice message"),
     "audio": "🎵 Audio",
-    "image": "📷 Bild",
+    "image": "📷 " + T("Bild","Image"),
     "video": "🎬 Video",
-    "document": "📄 Dokument",
+    "document": "📄 " + T("Dokument","Document"),
     "sticker": "🏷 Sticker",
-    "location": "📍 Standort",
-    "vcard": "👤 Kontakt",
-    "revoked": "🚫 geloescht",
+    "location": "📍 " + T("Standort","Location"),
+    "vcard": "👤 " + T("Kontakt","Contact"),
+    "revoked": "🚫 " + T("geloescht","deleted"),
     "e2e_notification": "",
     "notification_template": "",
 }
@@ -1919,7 +1965,7 @@ def nachricht_text(n: dict[str, Any]) -> str:
     t = (n.get("text") or "").strip()
     if t:
         return t
-    return TYP_TEXT.get(n.get("typ") or "", f"[{n.get('typ') or 'ohne Text'}]")
+    return TYP_TEXT.get(n.get("typ") or "", f"[{n.get('typ') or T('ohne Text','no text')}]")
 
 
 def zeit_kurz(ts: Any) -> str:
@@ -2210,11 +2256,11 @@ def gespraech(anfrage: Request, id: str, anzahl: int = 40,
     if bekannt or aus_gruppen:
         punkte = "".join(
             f'<li class="py-1"><span class="rounded bg-slate-100 text-xs '
-            f'px-1.5 py-0.5 mr-1.5">{esc_h(z["bereich"])}</span>'
+            f'px-1.5 py-0.5 mr-1.5">{esc_h(bereich_anzeige(z["bereich"]))}</span>'
             f'{esc_h(z["aussage"])}</li>' for z in bekannt)
         punkte += "".join(
             f'<li class="py-1"><span class="rounded bg-slate-100 text-xs '
-            f'px-1.5 py-0.5 mr-1.5">{esc_h(z["bereich"])}</span>'
+            f'px-1.5 py-0.5 mr-1.5">{esc_h(bereich_anzeige(z["bereich"]))}</span>'
             f'{esc_h(z["aussage"])} <span class="text-xs text-slate-500">'
             f'{T("aus","from")} {esc_h(z["quelle"])}</span></li>' for z in aus_gruppen)
         wissen_html = f"""<details class="mb-4 rounded-xl border border-slate-200
@@ -2368,10 +2414,10 @@ def termin_erkennen(chat_name: str, nachrichten: list[Nachricht]) -> dict[str, A
     schlimmer als keiner.
     """
     heute = time.strftime("%A, %d.%m.%Y", time.localtime())
-    verlauf = "\n".join(f"{'ich' if n.von_mir else chat_name}: {n.text}"
+    verlauf = "\n".join(f"{T('ich','me') if n.von_mir else chat_name}: {n.text}"
                          for n in nachrichten)[:20000]
     roh = modell_fragen(TERMIN_SYSTEM,
-                        f"Heute ist {heute}.\n\nVerlauf mit {chat_name}:\n\n{verlauf}",
+                        T(f"Heute ist {heute}.\n\nVerlauf mit {chat_name}:\n\n{verlauf}", f"Today is {heute}.\n\nHistory with {chat_name}:\n\n{verlauf}"),
                         hoechstens=500)
     text = re.sub(r"^```[a-zA-Z]*\s*", "", (roh or "").strip())
     text = re.sub(r"\s*```$", "", text).strip()
@@ -2403,7 +2449,7 @@ def ics_bauen(titel: str, beginn: str, ende: str = "", ort: str = "",
 
     kennung = hashlib.sha256(f"{titel}{beginn}".encode()).hexdigest()[:24]
     zeilen = [
-        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Juro//Entwurfsdienst//DE",
+        "BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:-//wa-gehilfe//wa-gehilfe//{SPRACHE.upper()}",
         "BEGIN:VEVENT",
         f"UID:{kennung}@{KALENDER_DOMAIN}",
         f"DTSTAMP:{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}",
@@ -2456,7 +2502,7 @@ def medien_holen(wa_id: str) -> tuple[bytes, str]:
     m = koppler(f"/medien?id={urllib.parse.quote(wa_id)}")
     if not isinstance(m, dict) or not m.get("daten"):
         raise HTTPException(502, str((m or {}).get("fehler") or
-                                     "Medien nicht abrufbar"))
+                                     T("Medien nicht abrufbar","media not retrievable")))
     import base64
     rohdaten = base64.b64decode(m["daten"])
     typ = (m.get("mimetyp") or "application/octet-stream").split(";")[0]
@@ -2571,10 +2617,10 @@ def nachricht_aendern(anfrage: Request, id: str = Form(...), wa_id: str = Form(.
 
     if was == "loeschen" and bestaetigt != "ja":
         return bestaetigungsseite(
-            "Nachricht loeschen", "/nachricht",
+            T("Nachricht loeschen","Delete message"), "/nachricht",
             {"id": id, "wa_id": wa_id, "was": was},
-            "Diese Nachricht wird fuer alle geloescht. Das laesst sich nicht "
-            "rueckgaengig machen.", ziel, knopf="Ja, loeschen")
+            T("Diese Nachricht wird fuer alle geloescht. Das laesst sich nicht rueckgaengig machen.",
+              "This message will be deleted for everyone. This cannot be undone."), ziel, knopf=T("Ja, loeschen","Yes, delete"))
 
     r = koppler("/nachricht", {"id": wa_id, "was": was, "text": text})
     if not (isinstance(r, dict) and r.get("ok")):
@@ -2610,11 +2656,11 @@ async def senden_medien(anfrage: Request) -> Response:
     datei = formular.get("datei")
     ziel = f"/gespraech?id={urllib.parse.quote(id)}"
     if not id or datei is None or not getattr(datei, "filename", ""):
-        return RedirectResponse(f"{ziel}&fehler=keine+Datei", status_code=303)
+        return RedirectResponse(f"{ziel}&fehler={urllib.parse.quote(T('keine Datei','no file'))}", status_code=303)
 
     rohdaten = await datei.read()
     if len(rohdaten) > 32 * 1024 * 1024:
-        return RedirectResponse(f"{ziel}&fehler=Datei+zu+gross+(max.+32+MB)",
+        return RedirectResponse(f"{ziel}&fehler={urllib.parse.quote(T('Datei zu gross (max. 32 MB)','file too large (max. 32 MB)'))}",
                                 status_code=303)
 
     r = koppler("/senden-medien", {
@@ -2633,7 +2679,7 @@ async def senden_medien(anfrage: Request) -> Response:
         v.execute("""INSERT INTO gesendet (zeit, profil, chat, text, quelle, wa_id)
                      VALUES (?,?,?,?,'datei',?)""",
                   (time.time(), PROFIL_STANDARD, name,
-                   f"[Datei: {datei.filename}] {text}".strip(), r.get("id")))
+                   f"[{T('Datei','File')}: {datei.filename}] {text}".strip(), r.get("id")))
         v.commit()
     return RedirectResponse(ziel, status_code=303)
 
@@ -2800,7 +2846,7 @@ def termin_erkennen_formular(anfrage: Request, id: str = Form(...)) -> Response:
     try:
         roh = koppler(f"/nachrichten?chat={urllib.parse.quote(id)}&anzahl=30")
         if not isinstance(roh, list) or not roh:
-            raise RuntimeError("kein Verlauf")
+            raise RuntimeError(T("kein Verlauf","no history"))
         nachrichten = medien_als_text(roh, name)
         chats = koppler("/chats")
         name = next((c.get("name") for c in chats if c.get("id") == id), id) \
@@ -2809,11 +2855,11 @@ def termin_erkennen_formular(anfrage: Request, id: str = Form(...)) -> Response:
         d = termin_erkennen(name, nachrichten)
         if not d.get("gefunden") or not d.get("beginn"):
             return RedirectResponse(
-                f"{ziel}&fehler={urllib.parse.quote('Kein konkreter Termin gefunden.')}",
+                f"{ziel}&fehler={urllib.parse.quote(T('Kein konkreter Termin gefunden.','No concrete appointment found.'))}",
                 status_code=303)
 
         teile = urllib.parse.urlencode({
-            "t_titel": d.get("titel") or "Termin",
+            "t_titel": d.get("titel") or T("Termin","Appointment"),
             "t_beginn": d.get("beginn") or "",
             "t_ende": d.get("ende") or "",
             "t_ort": d.get("ort") or "",
@@ -2851,7 +2897,7 @@ def termin_whatsapp(anfrage: Request, id: str = Form(...),
     ziel = f"/gespraech?id={urllib.parse.quote(id)}"
     beginn = _epoche(t_beginn)
     if not beginn:
-        return RedirectResponse(f"{ziel}&fehler=Beginn+unverstaendlich",
+        return RedirectResponse(f"{ziel}&fehler={urllib.parse.quote(T('Beginn unverstaendlich','start time not understood'))}",
                                 status_code=303)
 
     if bestaetigt != "ja":
@@ -2859,17 +2905,17 @@ def termin_whatsapp(anfrage: Request, id: str = Form(...),
         name_v = next((c.get("name") for c in chats_v if c.get("id") == id), id) \
             if isinstance(chats_v, list) else id
         wann = time.strftime("%A, %d.%m.%Y um %H:%M", time.localtime(beginn))
-        vorschau = f"Termin: {t_titel}\n{wann}"
+        vorschau = f"{T('Termin','Appointment')}: {t_titel}\n{wann}"
         if t_ort:
-            vorschau += f"\nOrt: {t_ort}"
+            vorschau += f"\n{T('Ort','Place')}: {t_ort}"
         if t_text:
             vorschau += f"\n{t_text}"
-        vorschau += "\n\nAlle im Chat sehen diesen Termin und koennen zusagen."
+        vorschau += T("\n\nAlle im Chat sehen diesen Termin und koennen zusagen.","\n\nEveryone in the chat sees this appointment and can accept.")
         return bestaetigungsseite(
-            f"Termin anlegen bei {anzeige(name_v)}", "/termin-whatsapp",
+            T(f"Termin anlegen bei {anzeige(name_v)}", f"Create appointment with {anzeige(name_v)}"), "/termin-whatsapp",
             {"id": id, "t_titel": t_titel, "t_beginn": t_beginn,
              "t_ende": t_ende, "t_ort": t_ort, "t_text": t_text},
-            vorschau, ziel, knopf="Ja, anlegen")
+            vorschau, ziel, knopf=T("Ja, anlegen","Yes, create"))
 
     r = koppler("/termin", {"chat": id, "name": t_titel, "beginn": beginn,
                             "ende": _epoche(t_ende), "ort": t_ort,
@@ -2886,19 +2932,20 @@ def termin_whatsapp(anfrage: Request, id: str = Form(...),
         v.execute("""INSERT INTO gesendet (zeit, profil, chat, text, quelle, wa_id)
                      VALUES (?,?,?,?,'termin',?)""",
                   (time.time(), PROFIL_STANDARD, name,
-                   f"Termin: {t_titel} am {t_beginn}", r.get("id")))
+                   T(f"Termin: {t_titel} am {t_beginn}", f"Appointment: {t_titel} on {t_beginn}"), r.get("id")))
         v.commit()
     return RedirectResponse(ziel, status_code=303)
 
 
 @app.get("/termin.ics")
-def termin_ics(anfrage: Request, t_titel: str = "Termin", t_beginn: str = "",
+def termin_ics(anfrage: Request, t_titel: str = "", t_beginn: str = "",
                t_ende: str = "", t_ort: str = "", t_text: str = "") -> Response:
     """Denselben Termin zum Einlesen in einen beliebigen Kalender."""
     if not zugang.angemeldet(anfrage):
         return Response(status_code=401)
     if not t_beginn:
-        return Response("Beginn fehlt", status_code=400, media_type="text/plain")
+        return Response(T("Beginn fehlt","start missing"), status_code=400, media_type="text/plain")
+    t_titel = t_titel or T("Termin","Appointment")
     datei = re.sub(r"[^\w.-]", "_", t_titel)[:40] or "termin"
     return Response(
         ics_bauen(t_titel, t_beginn, t_ende, t_ort, t_text),
@@ -2946,10 +2993,10 @@ def vorschlag(anfrage: Request, id: str = Form(...)) -> Response:
         roh = koppler(f"/nachrichten?chat={urllib.parse.quote(id)}"
                       f"&anzahl={VORTIPPEN_KONTEXT}")
         if not isinstance(roh, list) or not roh:
-            raise RuntimeError("kein Verlauf")
+            raise RuntimeError(T("kein Verlauf","no history"))
         nachrichten = medien_als_text(roh, name)
         if not nachrichten:
-            raise RuntimeError("keine Textnachrichten als Zusammenhang")
+            raise RuntimeError(T("keine Textnachrichten als Zusammenhang","no text messages for context"))
 
         chats = koppler("/chats")
         name = next((c.get("name") for c in chats if c.get("id") == id), id) \
@@ -2958,7 +3005,7 @@ def vorschlag(anfrage: Request, id: str = Form(...)) -> Response:
         text = modell_fragen(
             SYSTEM_AUTO, prompt_bauen(nachrichten, name, PROFIL_STANDARD, None)).strip()
         if not text or text == "KEIN_ENTWURF":
-            raise RuntimeError("Modell gab keinen Entwurf")
+            raise RuntimeError(T("Modell gab keinen Entwurf","model gave no draft"))
 
         with closing(db()) as v:
             v.execute("INSERT INTO entwuerfe (zeit, profil, chat, kontext, entwurf) "
@@ -3024,7 +3071,7 @@ def senden(anfrage: Request, id: str = Form(...), text: str = Form(...),
     ziel = f"/gespraech?id={urllib.parse.quote(id)}"
     text = (text or "").strip()
     if not text:
-        return RedirectResponse(f"{ziel}&fehler=leerer+Text", status_code=303)
+        return RedirectResponse(f"{ziel}&fehler={urllib.parse.quote(T('leerer Text','empty text'))}", status_code=303)
 
     # Nachfragen nur bei dem, was die Maschine geschrieben hat.
     #
@@ -3040,7 +3087,7 @@ def senden(anfrage: Request, id: str = Form(...), text: str = Form(...),
         name_v = next((c.get("name") for c in chats_v if c.get("id") == id), id) \
             if isinstance(chats_v, list) else id
         return bestaetigungsseite(
-            f"Senden an {anzeige(name_v)}", "/senden",
+            T(f"Senden an {anzeige(name_v)}", f"Send to {anzeige(name_v)}"), "/senden",
             {"id": id, "text": text, "quelle": quelle,
              "zitat_id": zitat_id}, text, ziel)
 
@@ -3089,7 +3136,7 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
     for c, zeilen in geordnet:
         punkte = "".join(f"""<li class="flex items-start gap-2 py-1.5">
  <span class="shrink-0 rounded bg-slate-100 text-slate-600 text-xs px-1.5
-    py-0.5 mt-0.5">{esc_h(z['bereich'])}</span>
+    py-0.5 mt-0.5">{esc_h(bereich_anzeige(z['bereich']))}</span>
  {'<span class="shrink-0 rounded bg-sky-100 text-sky-800 text-xs px-1.5 py-0.5 mt-0.5">{T("eigen","own")}</span>'
   if z['herkunft'] == 'hand' else ''}
  <span class="flex-1 text-sm">{esc_h(z['aussage'])}</span>
@@ -3175,8 +3222,8 @@ def wissen_seite(anfrage: Request, profil: str = PROFIL_STANDARD) -> Response:
   {chat_auswahl("chat") if verbunden else
    f'<input name="chat" placeholder="{T("Chatname","Chat name")}" required class="{feld}">'}
   <select name="bereich" class="{feld}">
-   {''.join(f'<option>{b}</option>'
-            for b in ("Person", "Beziehung", "Vorlieben", "Vorhaben", "Thema", "Ton"))}
+   {''.join(f'<option value="{esc_h(b)}">{esc_h(bereich_anzeige(b))}</option>'
+            for b in BEREICHE)}
   </select>
   <input name="aussage" required placeholder="{T('Was gilt fuer diesen Chat?','What applies to this chat?')}"
      class="{feld} flex-1 min-w-48">
@@ -3557,13 +3604,13 @@ def verwaltung_token_erneuern(welcher: str, wunsch: TokenWunsch | None = None) -
     ``verwaltung`` betrifft nur juro-noc selbst.
     """
     if welcher not in ("zugang", "verwaltung"):
-        raise HTTPException(404, "unbekannter Token; erlaubt sind zugang und verwaltung")
+        raise HTTPException(404, T("unbekannter Token; erlaubt sind zugang und verwaltung","unknown token; allowed are zugang and verwaltung"))
     neu = zugang.erneuern(welcher, (wunsch.neu if wunsch else None))
     return {"token_art": welcher, "token": neu, "gueltig_ab": time.time(),
-            "hinweis": ("Alle offenen Sitzungen sind jetzt ungueltig; der neue Wert muss "
-                        "in der Erweiterung und in der Nomad-Variable nachgezogen werden."
+            "hinweis": (T("Alle offenen Sitzungen sind jetzt ungueltig; der neue Wert muss in der Erweiterung und in der Umgebung nachgezogen werden.",
+                          "All open sessions are now invalid; the new value must be updated in the extension and in the environment.")
                         if welcher == "zugang" else
-                        "Nur die Verwaltungsschnittstelle ist betroffen.")}
+                        T("Nur die Verwaltungsschnittstelle ist betroffen.","Only the admin interface is affected."))}
 
 
 @app.post("/verwaltung/aufraeumen", dependencies=[Depends(zugang.verwaltung_zugang)])

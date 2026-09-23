@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8">
-<title>WhatsApp-Entwurfshilfe</title>
+<title>wa-gehilfe</title>
 <style>
  body{font:14px system-ui,sans-serif;margin:1.5rem;max-width:34rem;color:#1f2328}
  label{display:block;margin:1rem 0 .3rem;font-weight:600}
@@ -10,24 +10,28 @@
  details{margin-top:1.4rem;border-top:1px solid #d0d7de;padding-top:1rem}
  summary{cursor:pointer;font-weight:600}
 </style>
-<h1>Einstellungen</h1>
+<!-- Deutsch steht im Markup, Englisch in data-en. einstellungen.js tauscht
+     es, wenn der Browser auf Englisch laeuft -- so bleibt die Seite ohne
+     Skript lesbar und braucht keine zweite Datei. -->
+<h1 data-en="Settings">Einstellungen</h1>
 
-<label for="dienst">Adresse des Entwurfsdienstes</label>
-<input id="dienst" placeholder="https://whatsapp-stefan.juroct.net">
-<p class="h">Der Dienst haelt den API-Schluessel und das Gedaechtnis &mdash; nicht der Browser.</p>
+<label for="dienst" data-en="Address of the service">Adresse des Dienstes</label>
+<input id="dienst" placeholder="https://wa.example.org">
+<p class="h" data-en="The service holds the API key and the memory &mdash; not the browser.">Der Dienst haelt den API-Schluessel und das Gedaechtnis &mdash; nicht der Browser.</p>
 
-<label for="token">Zugangstoken</label>
-<input id="token" type="password" autocomplete="off" placeholder="ZUGANG_TOKEN des Dienstes">
-<p class="h">Derselbe Token wie in <code>ZUGANG_TOKEN</code>. Ohne ihn antwortet der Dienst
+<label for="token" data-en="Access token">Zugangstoken</label>
+<input id="token" type="password" autocomplete="off"
+       placeholder="ZUGANG_TOKEN des Dienstes" data-en-placeholder="ZUGANG_TOKEN of the service">
+<p class="h" data-en="The same token as <code>ZUGANG_TOKEN</code>. Without it the service replies with 401. It stays in the extension's background service, not in the WhatsApp page.">Derselbe Token wie in <code>ZUGANG_TOKEN</code>. Ohne ihn antwortet der Dienst
 mit 401. Er liegt im Hintergrunddienst der Erweiterung, nicht in der WhatsApp-Seite.</p>
 
-<label for="profil">Profil</label>
-<input id="profil" placeholder="stefan">
-<p class="h">Trennt mehrere Instanzen: jedes Profil lernt fuer sich.</p>
+<label for="profil" data-en="Profile">Profil</label>
+<input id="profil" placeholder="standard">
+<p class="h" data-en="Separates several instances: each profile learns on its own.">Trennt mehrere Instanzen: jedes Profil lernt fuer sich.</p>
 
 <details>
- <summary>Zugriff von aussen (Cloudflare Access)</summary>
- <p class="h">Nur noetig, wenn die Adresse oben ueber den Cloudflare-Tunnel geht.
+ <summary data-en="Access from outside (Cloudflare Access)">Zugriff von aussen (Cloudflare Access)</summary>
+ <p class="h" data-en="Only needed if the address above goes through a Cloudflare tunnel. Access would send a login page the extension cannot use; a <em>service token</em> passes without one. On your own network leave both fields empty.">Nur noetig, wenn die Adresse oben ueber den Cloudflare-Tunnel geht.
  Access wuerde eine Anmeldemaske schicken, mit der die Erweiterung nichts anfangen kann;
  ein <em>Dienst-Token</em> kommt ohne Maske durch. Im eigenen Netz bleiben beide Felder leer.</p>
  <label for="cfKennung">CF-Access-Client-Id</label>
@@ -36,7 +40,7 @@ mit 401. Er liegt im Hintergrunddienst der Erweiterung, nicht in der WhatsApp-Se
  <input id="cfGeheimnis" type="password" autocomplete="off">
 </details>
 
-<button id="speichern">Speichern</button>
+<button id="speichern" data-en="Save">Speichern</button>
 <p id="status" class="h"></p>
 
 <script src="einstellungen.js"></script>

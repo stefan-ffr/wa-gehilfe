@@ -44,6 +44,10 @@ function findeAlle(kandidaten, wurzel = document) {
 
 // --- Rückmeldung an den Benutzer -------------------------------------------
 // Ein Helfer, der heimlich nichts mehr tut, ist schlimmer als keiner.
+// Sprache nach dem Browser: Deutsch bleibt Vorgabe, alles andere Englisch.
+const SPRACHE = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+const T = (de, en) => (SPRACHE === 'en' ? en : de);
+
 function melde(text, art = 'info') {
   document.getElementById('wa-entwurf-hinweis')?.remove();
   const farbe = { info: '#0969da', fehler: '#b42318', gut: '#1a7f37' }[art] || '#0969da';
@@ -62,7 +66,7 @@ function melde(text, art = 'info') {
 
 function chatKennung() {
   const t = finde(WAHL.chatTitel);
-  return (t?.getAttribute('title') || t?.textContent || 'unbekannt').trim();
+  return (t?.getAttribute('title') || t?.textContent || T('unbekannt', 'unknown')).trim();
 }
 
 function letzteNachrichten(anzahl = 25) {
@@ -111,16 +115,16 @@ function beimDienst(art, daten) {
 async function entwurfHolen() {
   const nachrichten = letzteNachrichten();
   if (nachrichten === null) {
-    melde('Nachrichtenliste im DOM nicht gefunden — WhatsApp hat vermutlich sein '
-        + 'Markup geändert. Selektoren in inhalt.js (WAHL) prüfen.', 'fehler');
+    melde(T('Nachrichtenliste im DOM nicht gefunden — WhatsApp hat vermutlich sein Markup geändert. Selektoren in inhalt.js (WAHL) prüfen.',
+            'Message list not found in the DOM — WhatsApp has probably changed its markup. Check the selectors in inhalt.js (WAHL).'), 'fehler');
     return;
   }
   if (!nachrichten.length) {
-    melde('Keine Nachrichten im offenen Chat gefunden.', 'fehler');
+    melde(T('Keine Nachrichten im offenen Chat gefunden.', 'No messages found in the open chat.'), 'fehler');
     return;
   }
 
-  melde('Entwurf wird geholt …');
+  melde(T('Entwurf wird geholt …', 'Fetching draft …'));
   const { daten, fehler } = await beimDienst('entwurf', { chat: chatKennung(), nachrichten });
   if (fehler) {
     melde(fehler, 'fehler');
@@ -129,16 +133,18 @@ async function entwurfHolen() {
 
   const { id, entwurf } = daten;
   if (entwurf.trim() === 'KEIN_ENTWURF') {
-    melde('Hier ist keine Antwort nötig — kein Entwurf eingefügt.', 'info');
+    melde(T('Hier ist keine Antwort nötig — kein Entwurf eingefügt.', 'No reply needed here — no draft inserted.'), 'info');
     return;
   }
   if (!entwurfEinfuegen(entwurf)) {
-    melde('Eingabefeld nicht gefunden — Selektor in inhalt.js (WAHL.eingabefeld) prüfen.', 'fehler');
+    melde(T('Eingabefeld nicht gefunden — Selektor in inhalt.js (WAHL.eingabefeld) prüfen.',
+          'Input field not found — check the selector in inhalt.js (WAHL.eingabefeld).'), 'fehler');
     return;
   }
   laufendeId = id;
   laufenderEntwurf = entwurf;
-  melde('Entwurf eingefügt. Prüfen, ändern, senden — abgeschickt wird nichts von allein.', 'gut');
+  melde(T('Entwurf eingefügt. Prüfen, ändern, senden — abgeschickt wird nichts von allein.',
+        'Draft inserted. Review, edit, send — nothing is sent on its own.'), 'gut');
 }
 
 // --- Lernen: was ist aus dem Entwurf geworden? ------------------------------
@@ -185,11 +191,11 @@ async function vormerkungPruefen(chat) {
   // immer Vorrang vor einer Vormerkung.
   const feld = finde(WAHL.eingabefeld);
   if (feld && (feld.textContent || '').trim()) {
-    melde('Vormerkung liegt bereit, das Feld ist aber nicht leer.', 'info');
+    melde(T('Vormerkung liegt bereit, das Feld ist aber nicht leer.', 'A queued text is ready, but the field is not empty.'), 'info');
     return;
   }
   if (entwurfEinfuegen(daten.text)) {
-    melde('Vorgemerkter Text eingefügt. Prüfen und senden.', 'gut');
+    melde(T('Vorgemerkter Text eingefügt. Prüfen und senden.', 'Queued text inserted. Review and send.'), 'gut');
   }
 }
 
